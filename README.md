@@ -1,156 +1,231 @@
-# Harish Video Player
+# Harish — Video Player for Android
 
-[![CI](https://github.com/HarishKumarKG/video_player_android/actions/workflows/ci.yml/badge.svg)](https://github.com/HarishKumarKG/video_player_android/actions/workflows/ci.yml)
+A modern, offline video player for Android built with **Kotlin**, **Jetpack Compose** and **Media3 ExoPlayer**.
+It plays the videos already on your phone, with a folder browser, resume-where-you-left-off,
+recently played, gestures, subtitles, picture-in-picture, background audio and polished light & dark themes.
 
-A clean, fast video player for Android, built with Kotlin, Jetpack Compose and Media3 ExoPlayer.
-It's the sister app of [Harish Music Player](https://github.com/HarishKumarKG/music_player_android) and shares its look: the H logo, light and dark themes, and the profile menu.
+![CI](https://github.com/HarishKumarKG/video_player_android/actions/workflows/ci.yml/badge.svg)
+![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.4.20-7F52FF?logo=kotlin&logoColor=white)
+![Compose](https://img.shields.io/badge/Jetpack%20Compose-BOM%202026.09.00-4285F4?logo=jetpackcompose&logoColor=white)
+![Media3](https://img.shields.io/badge/Media3-1.9.0-E63946)
+![minSdk](https://img.shields.io/badge/minSdk-30-blue)
+![targetSdk](https://img.shields.io/badge/targetSdk-37-blue)
+
+---
 
 ## Features
 
 ### Library
+- **Folder browser** – file-manager style navigation through internal storage and SD card,
+  showing only folders that contain videos
+- **Path bar** – *Internal storage › DCIM › Camera*; tap any step to jump back, Back goes up one level
+- **Video rows** – thumbnail, duration, quality (720p / 1080p / 4K), size and a red *watched so far* bar
+- **Sort** – *date modified*, *name (A–Z / Z–A)*, *longest* or *largest*
+- **Search** – live results as you type, across file and folder names
+  (case- and accent-insensitive, words in any order)
+- **Recently played** – every half-watched video, newest first, with time left;
+  finished videos drop off automatically. Strip on the first screen + full list in the menu
+  (remove one or clear all)
+- **Video info** – resolution, size, type, date and location
+- **Fast start-up** – the video list is cached and shown instantly, then refreshed in the background
+- Pull new downloads in any time with the **refresh** button
 
-- **Folder browser**: start at Internal storage (or pick an SD card) and tap through folders like a file manager. Only folders that contain videos appear, so you never open an empty one.
-- Path bar at the top (Internal storage › DCIM › Camera). Tap any step to jump back; the Back button goes up one level.
-- Each video shows a thumbnail, duration, quality (720p / 1080p / 4K) and size.
-- **Sort**: date modified, name A–Z / Z–A, longest, largest. Folders follow the date and name sorts.
-- **Search** by file or folder name. Case and accents don't matter, and words can be in any order.
-- **Recently played**: every video you stopped halfway, newest first, with how much is left. Finished videos drop off by themselves. There's a strip on the first screen and a full list in the menu, where you can remove one video or clear all.
-- A red "watched so far" bar on each thumbnail.
-- Instant start: the list is cached, then refreshed quietly in the background. There's also a refresh button.
-- Video info: resolution, size, type, date and location.
+### Playback
+- **Resumes where you left off** – every video continues from its last position
+  (up to 2,000 remembered), with a *Start over* button
+- **Play queue** that follows the folder you played from – ⏮ / ⏭ move through it
+- **Controls** – ⏪10s ⏯ ⏩10s, seek bar, playback speed (0.25x – 2x)
+- **Gestures**
+  - Double-tap left / right to skip 10s (keep tapping to add more)
+  - Swipe up / down: left side = brightness, right side = volume
+  - Swipe sideways to scrub through the video
+- **Lock** – pocket-proof screen lock
+- **Aspect ratio** – Fit · Stretch · Zoom
+- **Rotation** – wide videos open in landscape automatically, plus a rotate button
+- **Subtitles** – embedded tracks (e.g. MKV) or load your own `.srt` / `.vtt` / `.ass` file
+- **Audio tracks** – switch language for multi-audio videos
 
-### Player
-
-- Big play button, ⏪ 10s / ⏩ 10s, previous / next video and a seek bar.
-- **Gestures**:
-  - Double-tap left or right to jump 10s. Keep tapping to add more.
-  - Swipe up or down on the left side for brightness, on the right side for volume.
-  - Swipe sideways to scrub through the video.
-- **Lock** the screen so pocket touches do nothing.
-- **Aspect ratio**: Fit, Stretch or Zoom.
-- **Rotate** button. Wide videos open in landscape automatically.
-- **Playback speed** from 0.25x to 2x.
-- **Subtitles**: pick embedded tracks (e.g. MKV languages) or load your own `.srt`, `.vtt` or `.ass` file.
-- **Audio track** picker for videos with several languages.
-- **Resume**: every video continues where you stopped, with a "Start over" button. Up to 2,000 videos are remembered.
-
-### Background and picture-in-picture
-
-- **Picture-in-picture**: press Home and the video keeps playing in a small floating window with ⏪ ⏯ ⏩ buttons.
-- **Background audio** (optional): keep listening with the screen off. The video track is switched off to save battery.
-- Media notification with thumbnail, controls and a draggable seek bar. Headset and Bluetooth buttons work too.
+### Picture-in-picture, background & notification
+- **Picture-in-picture** – press Home and the video keeps playing in a floating window with ⏪ ⏯ ⏩
+- **Background audio** – keep listening with the screen off; the video track is switched off to save battery
+- Media notification with **thumbnail, ⏮ ⏯ ⏭** and a draggable progress bar
+- **MediaSession**: lock-screen controls, Bluetooth / headset buttons, Android media panel
+- **Audio focus** – pauses for calls and other apps, resumes after short interruptions
+- **Pauses when headphones are unplugged** or Bluetooth disconnects
 
 ### Settings
-
-Everything below is on by default. Turn off whatever you don't want from **Menu → Settings**:
-
 | Setting | Default | What it does |
-| --- | --- | --- |
+|---|---|---|
 | Resume where I left off | On | Each video starts from the spot you stopped at |
-| Show recently played | On | The half-watched strip on the first screen |
-| Auto picture-in-picture | On | Home button shrinks the playing video into a floating window |
+| Show recently played | On | Half-watched strip on the first screen |
+| Auto picture-in-picture | On | Home shrinks the playing video into a floating window |
 | Background audio | Off | Sound keeps playing when you leave the app |
 
-### Look
+### Look & feel
+- **Light, Dark and System** themes, with a quick ☀️/🌙 toggle in the header
+- Animated **splash screen** and animated **"H" logo** with a red play button
+- Side menu with a profile card (rotating ring, photo slideshow)
+- Edge-to-edge layout, immersive full-screen player
 
-- Light, dark and system themes, plus a quick sun / moon toggle.
-- Animated splash with the H logo and a red play button.
-- Burger menu with a profile card and a photo slideshow.
+---
 
 ## Tech stack
 
-| Area | Library |
-| --- | --- |
-| Language | Kotlin 2.4 (AGP 9 built-in Kotlin) |
-| UI | Jetpack Compose, Material 3, Navigation Compose |
-| Video | Media3 ExoPlayer, PlayerView, MediaSessionService |
-| DI | Hilt (KSP) |
-| Async | Kotlin Coroutines and Flow |
-| Build | Gradle 9.8, AGP 9.4, compileSdk / targetSdk 37, minSdk 30 |
+| Area | Library / tool |
+|---|---|
+| Language | Kotlin 2.4.20 |
+| UI | Jetpack Compose (BOM 2026.09.00), Material 3 |
+| Navigation | Navigation Compose 2.10.2 |
+| Dependency injection | Hilt 2.60.1 (KSP 2.3.11), androidx.hilt 1.4.0 |
+| Async | Kotlin Coroutines & Flow (`StateFlow`, `SharedFlow`) |
+| Lifecycle | AndroidX Lifecycle 2.11.0 (`collectAsStateWithLifecycle`) |
+| Media | Media3 1.9.0 – `ExoPlayer`, `PlayerView`, `MediaSessionService` |
+| Storage | `MediaStore` (videos), JSON files in app storage (cache, resume positions), `SharedPreferences` (theme, settings) |
+| Build | Gradle 9.8.0, Android Gradle Plugin 9.4.0 (built-in Kotlin), version catalog |
+| Tests | JUnit 4 |
+
+**SDK:** `minSdk 30` (Android 11) · `targetSdk / compileSdk 37` · Java 17
+
+---
 
 ## Architecture
 
-The app uses clean architecture with four layers:
+Layered **clean architecture** with unidirectional data flow:
+`ui` → `domain` ← `data`, and a separate `playback` layer for the player and session service.
 
 ```
-app/src/main/java/com/harish/videoplayer
-├── domain/     Pure Kotlin rules with no Android code (easy to unit test)
-│   ├── model/      Video, sorting, formatting, player settings
-│   ├── library/    Folder browsing, search index
-│   ├── resume/     When to remember a position
-│   └── subtitle/   Subtitle file types
-├── data/       Where data comes from and is saved
-│   ├── video/      MediaStore + JSON cache
-│   ├── resume/     Saved positions (resume.json)
-│   └── settings/   Theme and player switches
-├── playback/   The one shared ExoPlayer, queue, tracks, media session service
-└── ui/         Compose screens
-    ├── home/       Folder browser, search, rows
-    ├── recent/     Recently played list
-    ├── settings/   Settings switches
-    ├── player/     Player screen, controls, gestures, PiP, sheets
-    ├── navigation/ Nav host and drawer
-    └── theme/, brand/, splash/, themepicker/, permission/, common/
+com.harish.videoplayer
+├── VideoPlayerApp.kt            Application (Hilt)
+├── MainActivity.kt              Theme, splash, navigation host
+├── domain/                      Pure Kotlin – no Android UI
+│   ├── model/                   Video, VideoSortOrder, formatting, PlayerSettings, ThemeMode
+│   ├── library/                 Folder browser tree, breadcrumbs, video search
+│   ├── resume/                  Resume rules, recently played
+│   └── subtitle/                Subtitle file types
+├── data/
+│   ├── video/                   VideoRepository (MediaStore + JSON cache)
+│   ├── resume/                  ResumeRepository (saved positions)
+│   └── settings/                ThemeRepository, PlayerSettingsRepository
+├── playback/
+│   ├── PlayerHolder.kt          The single shared ExoPlayer
+│   ├── PlaybackController.kt    Single entry point: queue, resume, tracks, subtitles, background mode
+│   ├── PlaybackService.kt       MediaSessionService: notification, lock screen, Bluetooth
+│   └── VideoThumbnailBitmapLoader.kt  Video frames for the notification
+└── ui/
+    ├── home/                    Folder browser, header, search, rows, ViewModel
+    ├── recent/                  Recently played list
+    ├── settings/                Settings screen
+    ├── player/                  Player screen, controls, gestures, PiP, sheets, system UI
+    ├── navigation/              Destinations, nav host, side menu
+    ├── themepicker/             Theme screen
+    ├── permission/              Media/notification permission screen
+    ├── common/                  Thumbnail loading & caching, modifiers
+    └── brand/ splash/ theme/    Logo, colours, typography, backgrounds
 ```
 
-**How playback flows, step by step:**
+**How playback flows**
 
-1. You tap a video in a list. `HomeViewModel.play(list, index)` hands the whole list to `PlaybackController`.
-2. `PlaybackController` loads the list into the single ExoPlayer, jumps to the saved position, and connects to `PlaybackService`. Connecting is what shows the notification.
-3. The player screen draws the picture with `PlayerView` and puts Compose controls on top.
-4. Every few seconds, and on pause, the position is saved through `ResumeRepository`.
+```
+UI ──PlaybackController──▶ ExoPlayer (PlayerHolder) ──▶ PlayerView + Compose controls
+              │                     │
+              │                     └──▶ PlaybackService / MediaSession (notification, lock screen, Bluetooth)
+              └──▶ ResumeRepository (position saved every few seconds and on pause)
+```
+
+---
 
 ## Getting started
 
+### Requirements
+- **Android Studio** (latest stable) with **Android SDK Platform 37**
+- **JDK 17+** (Android Studio's bundled JDK works)
+- A device or emulator running **Android 11 (API 30) or newer** with some videos on it
+
+### Build & run
 ```bash
-git clone git@github.com:HarishKumarKG/video_player_android.git
+git clone https://github.com/HarishKumarKG/video_player_android.git
+cd video_player_android
+./gradlew assembleDebug          # or press ▶ Run in Android Studio
 ```
 
-Open the folder in Android Studio, let Gradle sync, then press **Run** on a phone running Android 11 or newer.
+Install on a connected device:
+```bash
+./gradlew installDebug
+```
 
-Run the unit tests:
-
+### Run the unit tests
 ```bash
 ./gradlew testDebugUnitTest
 ```
+Tests cover sorting, search, the folder browser and breadcrumbs, resume rules, recently played and formatting.
 
-## Continuous integration and releases
+---
 
-- **CI** (`.github/workflows/ci.yml`): every push and pull request to `main` runs the tests and builds a debug APK. You can download the APK from the run page.
-- **Release** (`.github/workflows/release.yml`): push a tag such as `v1.0.0` to get a signed APK and AAB attached to a GitHub Release.
+## Continuous integration
 
-The release workflow needs four repository secrets:
+GitHub Actions workflows in `.github/workflows/`:
 
-| Secret | What it is |
-| --- | --- |
-| `KEYSTORE_BASE64` | Your `.jks` file, base64-encoded (`base64 -i release.jks \| pbcopy` on a Mac) |
-| `KEYSTORE_PASSWORD` | Keystore password |
-| `KEY_ALIAS` | Key alias |
-| `KEY_PASSWORD` | Key password |
+| Workflow | Runs when | What it does |
+|---|---|---|
+| `ci.yml` | Push or pull request to `main` | Runs unit tests, builds a debug APK (downloadable from the run's *Artifacts*) |
+| `release.yml` | A `v*` tag is pushed / a GitHub Release is published | Runs tests, builds a **signed** APK + AAB and attaches them to the release |
+
+Release signing uses four repository secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSWORD`, `KEY_ALIAS`, `KEY_PASSWORD`.
 
 ## Permissions
 
 | Permission | Why |
-| --- | --- |
-| `READ_MEDIA_VIDEO` (Android 13+) / `READ_EXTERNAL_STORAGE` (12 and below) | List and play your videos |
-| `POST_NOTIFICATIONS` | Media notification during background audio |
-| `FOREGROUND_SERVICE_MEDIA_PLAYBACK`, `WAKE_LOCK` | Keep background audio alive with the screen off |
+|---|---|
+| `READ_MEDIA_VIDEO` (Android 13+) / `READ_EXTERNAL_STORAGE` (Android 11–12) | Read the videos on the device |
+| `POST_NOTIFICATIONS` | Show the playback notification (Android 13+) |
+| `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Keep playing in the background |
+| `WAKE_LOCK` | Keep background audio playing with the screen off |
 
-## Data stored on the phone
+No internet permission – the app works fully offline and nothing leaves the device.
 
-All of it is in the app's private storage, and nothing leaves the phone:
+---
 
-- `videos_cache.json`: the last video list, for an instant start.
-- `resume.json`: where you stopped each video (up to the 2,000 most recent).
-- Shared preferences: theme and the Settings switches.
+## Data stored on the device
 
-## Roadmap
+All files live in the app's private storage and are removed when the app is uninstalled.
 
+| File | Contents |
+|---|---|
+| `videos_cache.json` | Last scanned video list (instant start-up) |
+| `resume.json` | Where you stopped each video (up to 2,000) |
+| `settings` (SharedPreferences) | Selected theme |
+| `player_settings` (SharedPreferences) | Resume, recently played, picture-in-picture, background audio |
+
+---
+
+## Tips
+
+**Background audio stops on some phones?**
+Some manufacturers (Xiaomi, Oppo, Vivo, OnePlus, Samsung…) add extra battery savers.
+Allow the app to run in the background (e.g. *Battery → No restrictions / Unrestricted*) –
+see [dontkillmyapp.com](https://dontkillmyapp.com) for step-by-step guides.
+
+**Subtitles:** keep your `.srt` file next to the video, then use *Subtitles → Load subtitle file…* in the player.
+
+**Closing the floating window** (✕) always pauses the video, even with background audio on.
+
+---
+
+## Roadmap ideas
 - Remember chosen subtitle files per video
 - Playlists and favourites
 - Equalizer and audio boost
 - Network streams (URL / SMB)
 
+---
+
 ## Author
 
-**Harish**, mobile app developer (Android, iOS, Flutter, KMP, .NET MAUI). [github.com/HarishKumarKG](https://github.com/HarishKumarKG)
+**Harish** — Mobile App Developer (Android · iOS · Flutter · KMP · .NET MAUI)
+GitHub: [@HarishKumarKG](https://github.com/HarishKumarKG)
+
+## License
+
+No license has been chosen yet, so all rights are reserved by default.
+Add a `LICENSE` file (for example MIT or Apache 2.0) if you want others to use the code.
