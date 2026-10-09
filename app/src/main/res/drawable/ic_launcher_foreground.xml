@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- "H" monogram for Harish: a red play button sits on the crossbar -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- ring: Frosted Blue -->
+    <path
+        android:pathData="M54,25a29,29 0,1 1,0,58a29,29 0,1 1,0,-58z"
+        android:strokeColor="#73A8DADC"
+        android:strokeWidth="1.2"
+        android:fillColor="#00000000" />
+    <!-- H: Honeydew -->
+    <path
+        android:fillColor="#FFF1FAEE"
+        android:pathData="M35.00,36.00a4.00,4.00 0,0 1,8.00,0v36.00a4.00,4.00 0,0 1,-8.00,0z M65.00,36.00a4.00,4.00 0,0 1,8.00,0v36.00a4.00,4.00 0,0 1,-8.00,0z M42,52.4h24v3.2h-24z" />
+    <!-- play button: Strawberry Red, with soft rounded corners -->
+    <path
+        android:fillColor="#FFE63946"
+        android:strokeColor="#FFE63946"
+        android:strokeWidth="2.4"
+        android:strokeLineJoin="round"
+        android:pathData="M49.5,46.5L61.5,54L49.5,61.5z" />
+</vector>
