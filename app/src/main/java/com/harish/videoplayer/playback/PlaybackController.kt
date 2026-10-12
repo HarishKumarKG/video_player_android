@@ -9,16 +9,23 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.common.TrackSelectionOverride
 import androidx.media3.common.Tracks
+import androidx.media3.exoplayer.ExoPlaybackException
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.harish.videoplayer.data.audio.AudioChoice
+import com.harish.videoplayer.data.audio.AudioChoiceRepository
 import com.harish.videoplayer.data.resume.ResumeRepository
 import com.harish.videoplayer.data.settings.PlayerSettingsRepository
 import com.harish.videoplayer.domain.model.Video
+import com.harish.videoplayer.domain.model.audioCodecLabel
+import com.harish.videoplayer.domain.model.channelLayoutLabel
 import com.harish.videoplayer.domain.subtitle.SubtitleFormat
 import dagger.hilt.android.qualifiers.ApplicationContext
 import java.util.Locale
@@ -41,7 +48,11 @@ data class TrackOption(
     val groupIndex: Int,
     val trackIndex: Int,
     val label: String,
-    val isSelected: Boolean
+    val isSelected: Boolean,
+    val isSupported: Boolean, // false = this phone can't play it (shown greyed out)
+    val language: String? = null,   // raw code from the file, e.g. "ta"
+    val rawLabel: String? = null,   // track name from the file, e.g. "Tamil 5.1"
+    val typeIndex: Int = 0          // 0 = first audio track, 1 = second...
 )
 
 /**
@@ -57,7 +68,8 @@ class PlaybackController @Inject constructor(
     @ApplicationContext private val context: Context,
     private val holder: PlayerHolder,
     private val resumeRepository: ResumeRepository,
-    private val settingsRepository: PlayerSettingsRepository
+    private val settingsRepository: PlayerSettingsRepository,
+    private val audioChoiceRepository: AudioChoiceRepository
 ) {
     val player: ExoPlayer get() = holder.player
 
@@ -104,7 +116,20 @@ class PlaybackController @Inject constructor(
             currentId = newId
             lastPositionMs = 0L
             lastDurationMs = 0L
+            resetAudioDecoders() // every new video gets the normal decoder order again
             newId?.let(::continueFromSavedPosition)
+        }
+
+        override fun onAudioSessionIdChanged(audioSessionId: Int) {
+            volumeBooster.onSessionChanged(audioSessionId)
+        }
+
+        override fun onTracksChanged(tracks: Tracks) {
+            restoreAudioChoice(tracks)
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            tryOtherAudioDecoder(error)
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -141,6 +166,9 @@ class PlaybackController @Inject constructor(
         lastPositionMs = resumeAt ?: 0L
         lastDurationMs = videos[index].durationMs
 
+        resetAudioDecoders()
+        audioRestoredFor = null
+        applyPreferredAudioLanguage()
         p.setMediaItems(videos.map { it.toMediaItem() }, index, resumeAt ?: 0L)
         setVideoEnabled(true)
         p.prepare()
@@ -167,7 +195,17 @@ class PlaybackController @Inject constructor(
         _resumeNotice.value = null
         controllerFuture?.let { MediaController.releaseFuture(it) }
         controllerFuture = null
+        volumeBooster.reset() // next time starts at normal volume
     }
+
+    // ---------- Volume above 100% ----------
+
+    private val volumeBooster = VolumeBooster()
+
+    /** 1f = 100% .. 2f = 200% (extra amplification on top of the phone's max volume). */
+    val volumeBoost: Float get() = volumeBooster.boost
+
+    fun setVolumeBoost(level: Float) = volumeBooster.set(level, player.audioSessionId)
 
     /**
      * Background audio: turning the video track off while the app is hidden saves a lot of
@@ -190,26 +228,61 @@ class PlaybackController @Inject constructor(
         tracks.groups.forEachIndexed { groupIndex, group ->
             if (group.type != type) return@forEachIndexed
             for (i in 0 until group.length) {
-                if (!group.isTrackSupported(i)) continue
+                val supported = group.isTrackSupported(i)
+                // Unsupported subtitles are just hidden; unsupported audio is shown so you can see why
+                if (!supported && type != C.TRACK_TYPE_AUDIO) continue
                 val format = group.getTrackFormat(i)
                 val language = format.language
                     ?.takeIf { it.isNotBlank() && it != "und" }
                     ?.let { Locale.forLanguageTag(it).displayLanguage.ifBlank { it } }
-                val channels = when (format.channelCount) {
-                    1 -> "Mono"
-                    2 -> "Stereo"
-                    6 -> "5.1"
-                    8 -> "7.1"
-                    else -> null
-                }
-                val label = listOfNotNull(format.label, language, channels)
+                val codec = if (type == C.TRACK_TYPE_AUDIO) audioCodecLabel(format.sampleMimeType) else null
+                val channels = if (type == C.TRACK_TYPE_AUDIO) channelLayoutLabel(format.channelCount) else null
+                val label = listOfNotNull(format.label, language, codec, channels)
                     .distinct()
                     .joinToString(" · ")
                     .ifBlank { "Track ${options.size + 1}" }
-                options += TrackOption(type, groupIndex, i, label, group.isTrackSelected(i))
+                options += TrackOption(type, groupIndex, i, label, group.isTrackSelected(i), supported,
+                    language = format.language, rawLabel = format.label, typeIndex = options.size)
             }
         }
         return options
+    }
+
+    /** You picked an audio track in the 🎵 menu: use it now and remember it (see AudioChoiceRepository). */
+    fun chooseAudio(option: TrackOption) {
+        currentId?.let { id ->
+            audioChoiceRepository.save(id, AudioChoice(option.language, option.rawLabel, option.typeIndex))
+        }
+        applyPreferredAudioLanguage() // remember the language for other videos...
+        selectTrack(C.TRACK_TYPE_AUDIO, option) // ...and switch this one right now
+    }
+
+    // Which video the saved audio choice was already applied to (only once per video, so the
+    // user can still switch tracks afterwards)
+    private var audioRestoredFor: Long? = null
+
+    private fun restoreAudioChoice(tracks: Tracks) {
+        val id = currentId ?: return
+        if (audioRestoredFor == id) return
+        val options = tracksOf(tracks, C.TRACK_TYPE_AUDIO)
+        if (options.isEmpty()) return // tracks of this video not known yet
+        audioRestoredFor = id
+        val saved = audioChoiceRepository.choiceFor(id) ?: return
+        // Best match: same name and language, then same language, then same position
+        val match = options.firstOrNull { it.isSupported && it.rawLabel == saved.label && it.language == saved.language }
+            ?: options.firstOrNull { it.isSupported && saved.language != null && it.language == saved.language }
+            ?: options.getOrNull(saved.audioIndex)?.takeIf { it.isSupported }
+            ?: return
+        if (!match.isSelected) selectTrack(C.TRACK_TYPE_AUDIO, match)
+    }
+
+    /** New videos start in the language you picked last (when they have it). */
+    private fun applyPreferredAudioLanguage() {
+        val p = player
+        p.trackSelectionParameters = p.trackSelectionParameters.buildUpon()
+            .setPreferredAudioLanguage(audioChoiceRepository.preferredLanguage.value)
+            .clearOverridesOfType(C.TRACK_TYPE_AUDIO) // an override from the previous video doesn't apply here
+            .build()
     }
 
     /** Picks one track; for subtitles, null means "Off". */
@@ -249,6 +322,48 @@ class PlaybackController @Inject constructor(
             .setTrackTypeDisabled(C.TRACK_TYPE_TEXT, false)
             .clearOverridesOfType(C.TRACK_TYPE_TEXT)
             .build()
+    }
+
+    // ---------- Audio decoder fallback ----------
+
+    /** Audio decoders (renderer indexes) that failed on the current video. */
+    private val failedAudioRenderers = mutableSetOf<Int>()
+
+    /**
+     * An audio decoder crashed on this file (example from a real MKV: FFmpeg says
+     * "Invalid data found when processing input" on an AAC track the phone decodes fine).
+     * Turn that decoder off for this video, and let the player pick the other one,
+     * continuing from the same spot. Returns false when there's nothing left to try.
+     */
+    private fun tryOtherAudioDecoder(error: PlaybackException): Boolean {
+        val failure = error as? ExoPlaybackException ?: return false
+        if (failure.type != ExoPlaybackException.TYPE_RENDERER) return false
+        val p = player
+        val failedIndex = failure.rendererIndex
+        if (failedIndex < 0 || p.getRendererType(failedIndex) != C.TRACK_TYPE_AUDIO) return false
+        if (!failedAudioRenderers.add(failedIndex)) return false
+
+        val audioRenderers = (0 until p.rendererCount).filter { p.getRendererType(it) == C.TRACK_TYPE_AUDIO }
+        if (audioRenderers.all { it in failedAudioRenderers }) return false // tried them all
+
+        val selector = p.trackSelector as? DefaultTrackSelector ?: return false
+        selector.setParameters(selector.buildUponParameters().setRendererDisabled(failedIndex, true))
+        val position = p.currentPosition
+        p.prepare()          // clears the error and loads again with the other decoder
+        p.seekTo(position)
+        p.play()
+        return true
+    }
+
+    private fun resetAudioDecoders() {
+        if (failedAudioRenderers.isEmpty()) return
+        val selector = player.trackSelector as? DefaultTrackSelector
+        if (selector != null) {
+            val params = selector.buildUponParameters()
+            failedAudioRenderers.forEach { params.setRendererDisabled(it, false) }
+            selector.setParameters(params)
+        }
+        failedAudioRenderers.clear()
     }
 
     // ---------- Internals ----------

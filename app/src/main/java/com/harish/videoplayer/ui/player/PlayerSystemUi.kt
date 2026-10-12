@@ -88,17 +88,38 @@ fun rememberBrightnessController(): BrightnessController? {
  * Swipe-up/down volume on the right side. Works in steps of the phone's media volume,
  * but remembers the fraction in between so slow swipes still move it.
  */
-class VolumeController(context: Context) {
+class VolumeController(
+    context: Context,
+    private val getBoost: () -> Float,
+    private val setBoost: (Float) -> Unit
+) {
     private val audio = context.getSystemService(AudioManager::class.java)
     private val max = audio.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
     private var exact = audio.getStreamVolume(AudioManager.STREAM_MUSIC).toFloat()
 
-    /** 0f..1f */
-    val level: Float get() = exact / max
+    /**
+     * 0f..2f, like VLC: 0..1 is the phone's own volume (0-100%), 1..2 is the extra boost
+     * (100-200%) that only kicks in once the phone is already at maximum.
+     */
+    val level: Float get() = if (getBoost() > 1f) getBoost() else exact / max
 
+    /**
+     * Swiping up past 100% boosts; swiping down first removes the boost, then lowers the
+     * phone's volume. [by] is a fraction of the full 0-100% range.
+     */
     fun change(by: Float) {
-        exact = (exact + by * max).coerceIn(0f, max.toFloat())
+        var delta = by
+        val boost = getBoost()
+        if (delta < 0 && boost > 1f) {
+            val newBoost = boost + delta
+            if (newBoost >= 1f) { setBoost(newBoost); return }
+            setBoost(1f)
+            delta = newBoost - 1f // what's left lowers the phone volume
+        }
+        val wanted = exact + delta * max
+        exact = wanted.coerceIn(0f, max.toFloat())
         audio.setStreamVolume(AudioManager.STREAM_MUSIC, exact.toInt(), 0)
+        if (wanted > max) setBoost(getBoost() + (wanted - max) / max) // over the top -> boost
     }
 
     /** Re-reads the volume (it may have changed with the phone's buttons). */
@@ -108,12 +129,12 @@ class VolumeController(context: Context) {
 }
 
 @Composable
-fun rememberVolumeController(): VolumeController {
+fun rememberVolumeController(getBoost: () -> Float, setBoost: (Float) -> Unit): VolumeController {
     val context = LocalContext.current
-    return remember(context) { VolumeController(context.applicationContext) }
+    return remember(context) { VolumeController(context.applicationContext, getBoost, setBoost) }
 }
 
-/** Rotate button: landscape <-> portrait. Closing the player gives control back to the phone. */
+/** Closing the player gives orientation control back to the phone. */
 @Composable
 fun OrientationResetEffect() {
     val activity = LocalActivity.current ?: return
@@ -122,7 +143,20 @@ fun OrientationResetEffect() {
     }
 }
 
-fun Activity.setLandscape(landscape: Boolean) {
-    requestedOrientation = if (landscape) ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
-                           else ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+/**
+ * How the player screen turns.
+ *  AUTO      -> follows the phone: hold it sideways for landscape, upright for portrait.
+ *               Like VLC / MX Player this uses the motion sensor directly, so it works even
+ *               when the phone's own auto-rotate is switched off (that switch keeps the rest
+ *               of the phone still; while watching you usually want the video to turn).
+ *  LANDSCAPE / PORTRAIT -> locked by the rotate button, turning the phone does nothing
+ */
+enum class OrientationMode { AUTO, LANDSCAPE, PORTRAIT }
+
+fun Activity.applyOrientation(mode: OrientationMode) {
+    requestedOrientation = when (mode) {
+        OrientationMode.AUTO -> ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
+        OrientationMode.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+        OrientationMode.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+    }
 }

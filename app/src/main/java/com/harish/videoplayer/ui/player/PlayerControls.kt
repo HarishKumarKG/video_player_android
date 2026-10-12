@@ -274,7 +274,8 @@ sealed interface GestureHud {
 fun GestureHudView(hud: GestureHud, modifier: Modifier = Modifier) {
     val (icon, text) = when (hud) {
         is GestureHud.Brightness -> R.drawable.baseline_brightness_24 to "${(hud.level * 100).toInt()}%"
-        is GestureHud.Volume -> R.drawable.baseline_volume_up_24 to "${(hud.level * 100).toInt()}%"
+        is GestureHud.Volume -> R.drawable.baseline_volume_up_24 to
+            ("${(hud.level * 100).toInt()}%" + if (hud.level > 1f) "  BOOST" else "")
         is GestureHud.Seek -> {
             val sign = if (hud.deltaMs >= 0) "+" else "−"
             (if (hud.deltaMs >= 0) R.drawable.baseline_forward_10_24 else R.drawable.baseline_replay_10_24) to "${formatDuration(hud.targetMs)}\n$sign${formatDuration(kotlin.math.abs(hud.deltaMs))}"

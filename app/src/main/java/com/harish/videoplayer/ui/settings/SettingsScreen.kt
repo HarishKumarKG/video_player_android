@@ -35,6 +35,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.harish.videoplayer.R
+import com.harish.videoplayer.data.audio.AudioChoiceRepository
 import com.harish.videoplayer.data.resume.ResumeRepository
 import com.harish.videoplayer.data.settings.PlayerSettingsRepository
 import com.harish.videoplayer.domain.model.PlayerSettings
@@ -48,8 +49,12 @@ import kotlinx.coroutines.flow.StateFlow
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsRepository: PlayerSettingsRepository,
-    private val resumeRepository: ResumeRepository
+    private val resumeRepository: ResumeRepository,
+    private val audioChoiceRepository: AudioChoiceRepository
 ) : ViewModel() {
+    /** Language code of the audio you picked last ("ta"), or null. */
+    val preferredAudioLanguage: StateFlow<String?> = audioChoiceRepository.preferredLanguage
+    fun resetPreferredAudioLanguage() = audioChoiceRepository.clearPreferredLanguage()
     val settings: StateFlow<PlayerSettings> = settingsRepository.settings
     fun setResumePlayback(on: Boolean) = settingsRepository.setResumePlayback(on)
     fun setShowRecentlyPlayed(on: Boolean) = settingsRepository.setShowRecentlyPlayed(on)
@@ -58,10 +63,11 @@ class SettingsViewModel @Inject constructor(
     fun clearRecentlyPlayed() = resumeRepository.clearAll()
 }
 
-/** All the switches in one place. Everything starts ON except background audio. */
+/** All the switches in one place. Everything starts ON. */
 @Composable
 fun SettingsScreen(onMenuClick: () -> Unit, viewModel: SettingsViewModel = hiltViewModel()) {
     val settings by viewModel.settings.collectAsStateWithLifecycle()
+    val audioLanguage by viewModel.preferredAudioLanguage.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var confirmClear by remember { mutableStateOf(false) }
 
@@ -121,6 +127,34 @@ fun SettingsScreen(onMenuClick: () -> Unit, viewModel: SettingsViewModel = hiltV
                 }
             }
 
+            SettingsCard(title = "Audio") {
+                Row(
+                    modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        painterResource(R.drawable.baseline_audiotrack_24),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.tertiary
+                    )
+                    Spacer(Modifier.width(16.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Preferred audio language", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            audioLanguage?.let { "${languageName(it)} — videos start in it when they have it" }
+                                ?: "Not set — pick a track in the player's 🎵 menu and it's remembered",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    if (audioLanguage != null) {
+                        TextButton(onClick = viewModel::resetPreferredAudioLanguage) {
+                            Text("Reset", color = MaterialTheme.colorScheme.tertiary)
+                        }
+                    }
+                }
+            }
+
             SettingsCard(title = "Player") {
                 SettingSwitchRow(
                     icon = R.drawable.baseline_picture_in_picture_24,
@@ -132,7 +166,7 @@ fun SettingsScreen(onMenuClick: () -> Unit, viewModel: SettingsViewModel = hiltV
                 SettingSwitchRow(
                     icon = R.drawable.baseline_headphones_24,
                     title = "Background audio",
-                    subtitle = "Keep listening when you leave the app or turn off the screen",
+                    subtitle = "Keep listening when you lock the phone or leave the app, with controls on the lock screen",
                     checked = settings.backgroundAudio,
                     onCheckedChange = viewModel::setBackgroundAudio
                 )
@@ -177,3 +211,7 @@ private fun SettingsCard(title: String, content: @Composable () -> Unit) {
         Column(Modifier.padding(vertical = 8.dp)) { content() }
     }
 }
+
+/** "ta" -> "Tamil", "te" -> "Telugu"; unknown codes are shown as they are. */
+private fun languageName(code: String): String =
+    java.util.Locale.forLanguageTag(code).displayLanguage.ifBlank { code }

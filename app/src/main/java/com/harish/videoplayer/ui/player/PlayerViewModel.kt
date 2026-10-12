@@ -41,10 +41,12 @@ class PlayerViewModel @Inject constructor(
     fun seekTo(positionMs: Long) = player.seekTo(positionMs.coerceAtLeast(0))
     fun startOver() = controller.startOver()
     fun setSpeed(speed: Float) = controller.setSpeed(speed)
+    fun volumeBoost(): Float = controller.volumeBoost
+    fun setVolumeBoost(level: Float) = controller.setVolumeBoost(level)
 
     fun audioTracks(tracks: Tracks): List<TrackOption> = controller.tracksOf(tracks, C.TRACK_TYPE_AUDIO)
     fun subtitleTracks(tracks: Tracks): List<TrackOption> = controller.tracksOf(tracks, C.TRACK_TYPE_TEXT)
-    fun selectAudio(option: TrackOption) = controller.selectTrack(C.TRACK_TYPE_AUDIO, option)
+    fun selectAudio(option: TrackOption) = controller.chooseAudio(option) // also remembered for next time
     fun selectSubtitle(option: TrackOption?) = controller.selectTrack(C.TRACK_TYPE_TEXT, option)
     fun addSubtitle(uri: Uri, fileName: String) = controller.addSubtitle(uri, fileName)
 
@@ -58,7 +60,8 @@ class PlayerViewModel @Inject constructor(
      * [closedFloatingWindow]: the user just closed the PiP window with ✕, which means "stop".
      */
     fun onAppHidden(closedFloatingWindow: Boolean) {
-        if (settings.value.backgroundAudio && !closedFloatingWindow && player.isPlaying) {
+        // playWhenReady (not isPlaying): a video that is buffering for a moment still counts as playing
+        if (settings.value.backgroundAudio && !closedFloatingWindow && player.playWhenReady) {
             controller.setVideoEnabled(false)
         } else {
             player.pause()

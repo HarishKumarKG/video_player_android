@@ -81,6 +81,9 @@ dependencies {
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.ui)
     implementation(libs.media3.session)
+    // Software audio decoders (Dolby Digital / AC-3, E-AC-3, DTS, TrueHD, FLAC, Opus...) for
+    // phones whose built-in decoders can't play a track
+    implementation(libs.media3.ffmpeg.decoder)
 
     // Hilt
     implementation(libs.hilt.android)

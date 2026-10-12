@@ -2,7 +2,7 @@ package com.harish.videoplayer.domain.model
 
 /**
  * Switches the user can change in Settings (saved on the phone).
- * Defaults: everything ON except background audio.
+ * Defaults: everything ON.
  */
 data class PlayerSettings(
     /** Every video continues from where you stopped it last time. */
@@ -10,7 +10,7 @@ data class PlayerSettings(
     /** Show the half-watched videos strip on the first screen. */
     val showRecentlyPlayed: Boolean = true,
     /** Keep the sound playing when you leave the app (like a music player). */
-    val backgroundAudio: Boolean = false,
+    val backgroundAudio: Boolean = true,
     /** Pressing Home while a video plays shrinks it into a floating window. */
     val autoPictureInPicture: Boolean = true
 )

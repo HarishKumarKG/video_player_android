@@ -108,19 +108,14 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
     KeepScreenOnEffect(keepOn = ui.isPlaying)
     OrientationResetEffect()
     val brightness = rememberBrightnessController()
-    val volume = rememberVolumeController()
+    val volume = rememberVolumeController(getBoost = viewModel::volumeBoost, setBoost = viewModel::setVolumeBoost)
     BackHandler {
         if (locked) { controlsVisible = true; poke() } else onClose()
     }
 
-    // First time we know the video's shape: wide video -> landscape, tall video -> portrait
-    var oriented by rememberSaveable { mutableStateOf(false) }
-    LaunchedEffect(ui.videoWidth, ui.videoHeight) {
-        if (!oriented && ui.videoWidth > 0 && ui.videoHeight > 0) {
-            activity?.setLandscape(ui.videoWidth > ui.videoHeight)
-            oriented = true
-        }
-    }
+    // Orientation follows the phone (AUTO) until the rotate button locks it
+    var orientationMode by rememberSaveable { mutableStateOf(OrientationMode.AUTO) }
+    LaunchedEffect(orientationMode) { activity?.applyOrientation(orientationMode) }
 
     // Video finished: bring the controls back so the replay button is right there
     LaunchedEffect(ui.hasEnded) {
@@ -251,6 +246,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
         }
     }
 
+    val audioTracks = remember(ui.tracks) { viewModel.audioTracks(ui.tracks) }
+
     // ---------- Layout ----------
     Box(
         modifier = Modifier
@@ -292,7 +289,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                 PlayerControls(
                     ui = ui,
                     aspect = aspect,
-                    showAudioButton = viewModel.audioTracks(ui.tracks).size > 1,
+                    showAudioButton = audioTracks.isNotEmpty(),
                     actions = PlayerControlActions(
                         onBack = onClose,
                         onPlayPause = { viewModel.togglePlayPause(); poke() },
@@ -307,7 +304,23 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                             Toast.makeText(context, aspect.label, Toast.LENGTH_SHORT).show()
                             poke()
                         },
-                        onRotate = { activity?.setLandscape(!isLandscape); poke() },
+                        onRotate = {
+                            // Auto -> lock to the OTHER side; locked -> back to following the phone
+                            orientationMode = when (orientationMode) {
+                                OrientationMode.AUTO -> if (isLandscape) OrientationMode.PORTRAIT else OrientationMode.LANDSCAPE
+                                else -> OrientationMode.AUTO
+                            }
+                            Toast.makeText(
+                                context,
+                                when (orientationMode) {
+                                    OrientationMode.AUTO -> "Auto-rotate"
+                                    OrientationMode.LANDSCAPE -> "Landscape (locked)"
+                                    OrientationMode.PORTRAIT -> "Portrait (locked)"
+                                },
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            poke()
+                        },
                         onSubtitles = { sheet = PlayerSheet.SUBTITLES },
                         onAudio = { sheet = PlayerSheet.AUDIO },
                         onSpeed = { sheet = PlayerSheet.SPEED },
@@ -351,6 +364,16 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                         .align(Alignment.TopCenter)
                         .windowInsetsPadding(WindowInsets.displayCutout)
                         .padding(top = 72.dp)
+                )
+            }
+
+            // The video has sound tracks, but none of them can play: say so instead of staying silent
+            if (ui.error == null && audioTracks.isNotEmpty() && audioTracks.none { it.isSupported }) {
+                ErrorBanner(
+                    message = "No sound: this phone can't play the audio (${audioTracks.first().label})",
+                    hasNext = false,
+                    onNext = {},
+                    modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 96.dp)
                 )
             }
 

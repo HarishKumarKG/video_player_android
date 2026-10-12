@@ -2,7 +2,13 @@ package com.harish.videoplayer.playback
 
 import android.content.Context
 import androidx.media3.common.AudioAttributes
+import android.os.Handler
 import androidx.media3.common.C
+import androidx.media3.exoplayer.DefaultRenderersFactory
+import androidx.media3.exoplayer.Renderer
+import androidx.media3.exoplayer.audio.AudioRendererEventListener
+import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.ExoPlayer
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
@@ -26,7 +32,7 @@ class PlayerHolder @Inject constructor(
     val player: ExoPlayer
         get() = instance ?: create().also { instance = it }
 
-    private fun create(): ExoPlayer = ExoPlayer.Builder(context)
+    private fun create(): ExoPlayer = ExoPlayer.Builder(context, AudioRenderersFactory(context))
         .setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
@@ -43,5 +49,46 @@ class PlayerHolder @Inject constructor(
     companion object {
         /** The ⏪ / ⏩ buttons and double-tap jump by this much. */
         const val SKIP_MS = 10_000L
+    }
+}
+
+/**
+ * Two audio decoders, in this order:
+ *  1. The phone's own decoder - best for everyday formats (AAC, MP3...): fast and reliable.
+ *  2. FFmpeg (software) - for formats the phone can't play at all: Dolby Digital (AC-3 / E-AC-3),
+ *     DTS, TrueHD... Without it those tracks are silent.
+ *
+ * If the chosen decoder still fails in the middle of a file (some MKV rips have slightly broken
+ * audio that only one of them tolerates), PlaybackController switches to the other one and
+ * continues from the same spot - see `tryOtherAudioDecoder`.
+ *
+ * Video always uses the phone's hardware decoder (fast, battery friendly).
+ */
+private class AudioRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
+
+    init {
+        setEnableDecoderFallback(true)
+    }
+
+    override fun buildAudioRenderers(
+        context: Context,
+        extensionRendererMode: Int,
+        mediaCodecSelector: MediaCodecSelector,
+        enableDecoderFallback: Boolean,
+        audioSink: AudioSink,
+        eventHandler: Handler,
+        eventListener: AudioRendererEventListener,
+        out: ArrayList<Renderer>
+    ) {
+        super.buildAudioRenderers(
+            context,
+            DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON, // phone decoder first, FFmpeg as backup
+            mediaCodecSelector,
+            enableDecoderFallback,
+            audioSink,
+            eventHandler,
+            eventListener,
+            out
+        )
     }
 }

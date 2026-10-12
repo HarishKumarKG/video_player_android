@@ -38,17 +38,19 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 - **Controls** – ⏪10s ⏯ ⏩10s, seek bar, playback speed (0.25x – 2x)
 - **Gestures**
   - Double-tap left / right to skip 10s (keep tapping to add more)
-  - Swipe up / down: left side = brightness, right side = volume
+  - Swipe up / down: left side = brightness, right side = volume — keep swiping past 100% for a **boost up to 200%** (like VLC)
   - Swipe sideways to scrub through the video
 - **Lock** – pocket-proof screen lock
 - **Aspect ratio** – Fit · Stretch · Zoom
-- **Rotation** – wide videos open in landscape automatically, plus a rotate button
+- **Rotation** – follows how you hold the phone; the rotate button locks landscape or portrait (tap again for auto-rotate)
 - **Subtitles** – embedded tracks (e.g. MKV) or load your own `.srt` / `.vtt` / `.ass` file
-- **Audio tracks** – switch language for multi-audio videos
+- **Audio tracks** – switch language for multi-audio videos; each track shows its format and channels (e.g. *Tamil · Dolby Digital · 5.1*)
+- **Remembers your audio choice** – each video reopens with the track you picked, and new videos start in your last-picked language (reset in Settings)
+- **Plays almost any audio** – FFmpeg decoders handle Dolby Digital (AC-3 / E-AC-3), DTS, TrueHD, FLAC, Opus and more, even where the phone has no decoder of its own
 
 ### Picture-in-picture, background & notification
 - **Picture-in-picture** – press Home and the video keeps playing in a floating window with ⏪ ⏯ ⏩
-- **Background audio** – keep listening with the screen off; the video track is switched off to save battery
+- **Background audio** (on by default) – lock the phone and the sound keeps playing, with play / pause / skip and a seek bar on the lock screen; the video track is switched off to save battery and comes back when you unlock
 - Media notification with **thumbnail, ⏮ ⏯ ⏭** and a draggable progress bar
 - **MediaSession**: lock-screen controls, Bluetooth / headset buttons, Android media panel
 - **Audio focus** – pauses for calls and other apps, resumes after short interruptions
@@ -60,7 +62,7 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 | Resume where I left off | On | Each video starts from the spot you stopped at |
 | Show recently played | On | Half-watched strip on the first screen |
 | Auto picture-in-picture | On | Home shrinks the playing video into a floating window |
-| Background audio | Off | Sound keeps playing when you leave the app |
+| Background audio | On | Sound keeps playing when you lock the phone or leave the app |
 
 ### Look & feel
 - **Light, Dark and System** themes, with a quick ☀️/🌙 toggle in the header
@@ -80,7 +82,7 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 | Dependency injection | Hilt 2.60.1 (KSP 2.3.11), androidx.hilt 1.4.0 |
 | Async | Kotlin Coroutines & Flow (`StateFlow`, `SharedFlow`) |
 | Lifecycle | AndroidX Lifecycle 2.11.0 (`collectAsStateWithLifecycle`) |
-| Media | Media3 1.9.0 – `ExoPlayer`, `PlayerView`, `MediaSessionService` |
+| Media | Media3 1.9.0 – `ExoPlayer`, `PlayerView`, `MediaSessionService`; Jellyfin `media3-ffmpeg-decoder` for audio |
 | Storage | `MediaStore` (videos), JSON files in app storage (cache, resume positions), `SharedPreferences` (theme, settings) |
 | Build | Gradle 9.8.0, Android Gradle Plugin 9.4.0 (built-in Kotlin), version catalog |
 | Tests | JUnit 4 |
@@ -196,6 +198,7 @@ All files live in the app's private storage and are removed when the app is unin
 | `resume.json` | Where you stopped each video (up to 2,000) |
 | `settings` (SharedPreferences) | Selected theme |
 | `player_settings` (SharedPreferences) | Resume, recently played, picture-in-picture, background audio |
+| `audio_choices` (SharedPreferences) | Audio track picked per video + preferred language |
 
 ---
 

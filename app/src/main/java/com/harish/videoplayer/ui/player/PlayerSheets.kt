@@ -146,7 +146,16 @@ fun SubtitleSheet(
 fun AudioTrackSheet(tracks: List<TrackOption>, onSelect: (TrackOption) -> Unit, onDismiss: () -> Unit) {
     PlayerBottomSheet("Audio track", onDismiss) {
         tracks.forEach { track ->
-            ChoiceRow(track.label, selected = track.isSelected, onClick = { onSelect(track); onDismiss() })
+            if (track.isSupported) {
+                ChoiceRow(track.label, selected = track.isSelected, onClick = { onSelect(track); onDismiss() })
+            } else {
+                Text(
+                    "${track.label}  ·  can't play on this phone",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 14.dp)
+                )
+            }
         }
     }
 }
@@ -162,7 +171,7 @@ fun PlayerSettingsSheet(
         SettingSwitchRow(
             icon = R.drawable.baseline_headphones_24,
             title = "Background audio",
-            subtitle = "Keep listening when you leave the app or turn off the screen",
+            subtitle = "Keep listening when you lock the phone or leave the app, with controls on the lock screen",
             checked = settings.backgroundAudio,
             onCheckedChange = onBackgroundAudioChange
         )

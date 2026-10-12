@@ -21,7 +21,7 @@ class PlayerSettingsRepository @Inject constructor(
         PlayerSettings(
             resumePlayback = prefs.getBoolean(KEY_RESUME, true),
             showRecentlyPlayed = prefs.getBoolean(KEY_SHOW_RECENT, true),
-            backgroundAudio = prefs.getBoolean(KEY_BACKGROUND_AUDIO, false),
+            backgroundAudio = prefs.getBoolean(KEY_BACKGROUND_AUDIO, true),
             autoPictureInPicture = prefs.getBoolean(KEY_AUTO_PIP, true)
         )
     )
