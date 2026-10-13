@@ -11,6 +11,8 @@ data class PlayerSettings(
     val showRecentlyPlayed: Boolean = true,
     /** Keep the sound playing when you leave the app (like a music player). */
     val backgroundAudio: Boolean = true,
+    /** 5.1 / 7.1 movies: mix to stereo ourselves with the voice channel at full strength. */
+    val clearVoice: Boolean = true,
     /** Pressing Home while a video plays shrinks it into a floating window. */
     val autoPictureInPicture: Boolean = true
 )

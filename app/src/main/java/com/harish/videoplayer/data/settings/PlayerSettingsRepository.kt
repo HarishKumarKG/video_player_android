@@ -22,6 +22,7 @@ class PlayerSettingsRepository @Inject constructor(
             resumePlayback = prefs.getBoolean(KEY_RESUME, true),
             showRecentlyPlayed = prefs.getBoolean(KEY_SHOW_RECENT, true),
             backgroundAudio = prefs.getBoolean(KEY_BACKGROUND_AUDIO, true),
+            clearVoice = prefs.getBoolean(KEY_CLEAR_VOICE, true),
             autoPictureInPicture = prefs.getBoolean(KEY_AUTO_PIP, true)
         )
     )
@@ -37,6 +38,11 @@ class PlayerSettingsRepository @Inject constructor(
         _settings.update { it.copy(showRecentlyPlayed = enabled) }
     }
 
+    fun setClearVoice(enabled: Boolean) {
+        prefs.edit().putBoolean(KEY_CLEAR_VOICE, enabled).apply()
+        _settings.update { it.copy(clearVoice = enabled) }
+    }
+
     fun setBackgroundAudio(enabled: Boolean) {
         prefs.edit().putBoolean(KEY_BACKGROUND_AUDIO, enabled).apply()
         _settings.update { it.copy(backgroundAudio = enabled) }
@@ -50,6 +56,7 @@ class PlayerSettingsRepository @Inject constructor(
     private companion object {
         const val KEY_RESUME = "resume_playback"
         const val KEY_SHOW_RECENT = "show_recently_played"
+        const val KEY_CLEAR_VOICE = "clear_voice"
         const val KEY_BACKGROUND_AUDIO = "background_audio"
         const val KEY_AUTO_PIP = "auto_pip"
     }

@@ -59,6 +59,7 @@ class SettingsViewModel @Inject constructor(
     fun setResumePlayback(on: Boolean) = settingsRepository.setResumePlayback(on)
     fun setShowRecentlyPlayed(on: Boolean) = settingsRepository.setShowRecentlyPlayed(on)
     fun setBackgroundAudio(on: Boolean) = settingsRepository.setBackgroundAudio(on)
+    fun setClearVoice(on: Boolean) = settingsRepository.setClearVoice(on)
     fun setAutoPictureInPicture(on: Boolean) = settingsRepository.setAutoPictureInPicture(on)
     fun clearRecentlyPlayed() = resumeRepository.clearAll()
 }
@@ -128,6 +129,13 @@ fun SettingsScreen(onMenuClick: () -> Unit, viewModel: SettingsViewModel = hiltV
             }
 
             SettingsCard(title = "Audio") {
+                SettingSwitchRow(
+                    icon = R.drawable.baseline_volume_up_24,
+                    title = "Clear voices (5.1 / 7.1)",
+                    subtitle = "Surround movies keep dialogue loud on phone speakers and earphones. Applies from the next video",
+                    checked = settings.clearVoice,
+                    onCheckedChange = viewModel::setClearVoice
+                )
                 Row(
                     modifier = Modifier.padding(start = 24.dp, end = 12.dp, top = 8.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically

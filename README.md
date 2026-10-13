@@ -46,6 +46,7 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 - **Subtitles** – embedded tracks (e.g. MKV) or load your own `.srt` / `.vtt` / `.ass` file
 - **Audio tracks** – switch language for multi-audio videos; each track shows its format and channels (e.g. *Tamil · Dolby Digital · 5.1*)
 - **Remembers your audio choice** – each video reopens with the track you picked, and new videos start in your last-picked language (reset in Settings)
+- **Clear voices for 5.1 / 7.1** – surround movies are mixed down to stereo with the dialogue channel at full strength, so voices don't go quiet on phone speakers or earphones (switch in Settings)
 - **Plays almost any audio** – FFmpeg decoders handle Dolby Digital (AC-3 / E-AC-3), DTS, TrueHD, FLAC, Opus and more, even where the phone has no decoder of its own
 
 ### Picture-in-picture, background & notification
@@ -62,6 +63,7 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 | Resume where I left off | On | Each video starts from the spot you stopped at |
 | Show recently played | On | Half-watched strip on the first screen |
 | Auto picture-in-picture | On | Home shrinks the playing video into a floating window |
+| Clear voices (5.1 / 7.1) | On | Dialogue stays loud when surround audio plays on 2 speakers |
 | Background audio | On | Sound keeps playing when you lock the phone or leave the app |
 
 ### Look & feel

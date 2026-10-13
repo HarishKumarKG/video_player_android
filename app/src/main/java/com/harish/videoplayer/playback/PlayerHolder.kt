@@ -8,6 +8,8 @@ import androidx.media3.exoplayer.DefaultRenderersFactory
 import androidx.media3.exoplayer.Renderer
 import androidx.media3.exoplayer.audio.AudioRendererEventListener
 import androidx.media3.exoplayer.audio.AudioSink
+import androidx.media3.exoplayer.audio.DefaultAudioSink
+import com.harish.videoplayer.data.settings.PlayerSettingsRepository
 import androidx.media3.exoplayer.mediacodec.MediaCodecSelector
 import androidx.media3.exoplayer.ExoPlayer
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -25,14 +27,18 @@ import javax.inject.Singleton
  */
 @Singleton
 class PlayerHolder @Inject constructor(
-    @ApplicationContext private val context: Context
+    @ApplicationContext private val context: Context,
+    private val settingsRepository: PlayerSettingsRepository
 ) {
+    /** 5.1 / 7.1 -> stereo with clear dialogue (Settings > Clear voices). Checked per video. */
+    private val voiceDownmix = VoiceDownmixAudioProcessor { settingsRepository.settings.value.clearVoice }
+
     private var instance: ExoPlayer? = null
 
     val player: ExoPlayer
         get() = instance ?: create().also { instance = it }
 
-    private fun create(): ExoPlayer = ExoPlayer.Builder(context, AudioRenderersFactory(context))
+    private fun create(): ExoPlayer = ExoPlayer.Builder(context, AudioRenderersFactory(context, voiceDownmix))
         .setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
@@ -64,11 +70,25 @@ class PlayerHolder @Inject constructor(
  *
  * Video always uses the phone's hardware decoder (fast, battery friendly).
  */
-private class AudioRenderersFactory(context: Context) : DefaultRenderersFactory(context) {
+private class AudioRenderersFactory(
+    context: Context,
+    private val voiceDownmix: VoiceDownmixAudioProcessor
+) : DefaultRenderersFactory(context) {
 
     init {
         setEnableDecoderFallback(true)
     }
+
+    /** Same audio output as Media3's default, plus our surround -> stereo "clear voices" step. */
+    override fun buildAudioSink(
+        context: Context,
+        enableFloatOutput: Boolean,
+        enableAudioOutputPlaybackParams: Boolean
+    ): AudioSink = DefaultAudioSink.Builder(context)
+        .setEnableFloatOutput(enableFloatOutput)
+        .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
+        .setAudioProcessors(arrayOf(voiceDownmix))
+        .build()
 
     override fun buildAudioRenderers(
         context: Context,
