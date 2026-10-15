@@ -154,6 +154,7 @@ internal fun SearchResults(
     resume: Map<Long, ResumeEntry>,
     onPlay: (List<Video>, Int) -> Unit,
     onInfo: (Video) -> Unit,
+    onRename: (Video) -> Unit,
     contentPadding: PaddingValues
 ) {
     var results by remember { mutableStateOf<List<Video>>(emptyList()) }
@@ -192,7 +193,8 @@ internal fun SearchResults(
                         video = video,
                         resume = resume[video.id],
                         onClick = { onPlay(results, i) },
-                        onInfo = { onInfo(video) }
+                        onInfo = { onInfo(video) },
+                        onRename = { onRename(video) }
                     )
                 }
             }

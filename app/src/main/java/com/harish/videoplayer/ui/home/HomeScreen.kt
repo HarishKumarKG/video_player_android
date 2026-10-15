@@ -60,11 +60,13 @@ import com.harish.videoplayer.domain.library.browseParent
 import com.harish.videoplayer.domain.library.sortedFor
 import com.harish.videoplayer.domain.library.storageRoots
 import com.harish.videoplayer.domain.model.Video
+import com.harish.videoplayer.domain.model.otherNamesInFolderOf
 import com.harish.videoplayer.domain.model.VideoSortOrder
 import com.harish.videoplayer.domain.model.sortedByOrder
 import com.harish.videoplayer.domain.model.videoCount
 import com.harish.videoplayer.domain.resume.ResumeEntry
 import com.harish.videoplayer.domain.resume.recentlyPlayed
+import com.harish.videoplayer.ui.common.RenameFileDialog
 import com.harish.videoplayer.ui.theme.BrandBackground
 import com.harish.videoplayer.ui.theme.LocalIsDarkTheme
 
@@ -103,6 +105,7 @@ fun HomeRoute(
     }
 
     var infoFor by remember { mutableStateOf<Video?>(null) }
+    var renameFor by remember { mutableStateOf<Video?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf<String?>(null) } // null = not searching
     var currentDir by rememberSaveable { mutableStateOf<String?>(null) }  // null = top level
 
@@ -139,6 +142,7 @@ fun HomeRoute(
                     resume = resume,
                     onPlay = play,
                     onInfo = { infoFor = it },
+                    onRename = { renameFor = it },
                     contentPadding = bottomPadding
                 )
             } else {
@@ -192,6 +196,7 @@ fun HomeRoute(
                                 onOpenDir = { currentDir = it.path },
                                 onPlay = play,
                                 onInfo = { infoFor = it },
+                                onRename = { renameFor = it },
                                 contentPadding = bottomPadding
                             )
                         }
@@ -202,6 +207,20 @@ fun HomeRoute(
     }
 
     infoFor?.let { VideoInfoDialog(video = it, onDismiss = { infoFor = null }) }
+
+    renameFor?.let { video ->
+        RenameFileDialog(
+            fileName = video.name,
+            otherNamesInFolder = remember(video, state.videos) { state.videos.otherNamesInFolderOf(video) },
+            rename = { newName -> viewModel.rename(video, newName) },
+            onRenamed = { newName ->
+                renameFor = null
+                viewModel.onRenamed()
+                Toast.makeText(context, "Renamed to $newName", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { renameFor = null }
+        )
+    }
 }
 
 /**
@@ -220,6 +239,7 @@ private fun FolderListing(
     onOpenDir: (BrowseDir) -> Unit,
     onPlay: (List<Video>, Int) -> Unit,
     onInfo: (Video) -> Unit,
+    onRename: (Video) -> Unit,
     contentPadding: PaddingValues
 ) {
     val listing = remember(videos, dir, sortOrder) {
@@ -269,7 +289,8 @@ private fun FolderListing(
                     video = video,
                     resume = resume[video.id],
                     onClick = { onPlay(here, i) },
-                    onInfo = { onInfo(video) }
+                    onInfo = { onInfo(video) },
+                    onRename = { onRename(video) }
                 )
             }
         }

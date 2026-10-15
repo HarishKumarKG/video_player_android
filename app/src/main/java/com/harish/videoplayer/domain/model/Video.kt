@@ -19,6 +19,12 @@ data class Video(
     val folderName: String get() = path.substringBeforeLast('/', "").substringAfterLast('/')
 }
 
+/** Names of the other videos in the same folder as [video], so a rename can't clash with one. */
+fun List<Video>.otherNamesInFolderOf(video: Video): List<String> {
+    val folder = video.path.substringBeforeLast('/')
+    return filter { it.id != video.id && it.path.substringBeforeLast('/') == folder }.map { it.name }
+}
+
 /** Sort options shown in the top-right menu. */
 enum class VideoSortOrder(val label: String) {
     DATE_MODIFIED("Date modified"),

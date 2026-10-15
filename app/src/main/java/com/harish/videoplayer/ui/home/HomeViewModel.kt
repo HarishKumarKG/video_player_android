@@ -2,6 +2,8 @@ package com.harish.videoplayer.ui.home
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.harish.videoplayer.data.files.FileRenamer
+import com.harish.videoplayer.data.files.RenameResult
 import com.harish.videoplayer.data.resume.ResumeRepository
 import com.harish.videoplayer.data.settings.PlayerSettingsRepository
 import com.harish.videoplayer.data.settings.ThemeRepository
@@ -13,6 +15,7 @@ import com.harish.videoplayer.domain.model.Video
 import com.harish.videoplayer.domain.model.VideoSortOrder
 import com.harish.videoplayer.domain.resume.ResumeEntry
 import com.harish.videoplayer.playback.PlaybackController
+import com.harish.videoplayer.playback.contentUri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.Dispatchers
@@ -43,6 +46,7 @@ class HomeViewModel @Inject constructor(
     private val videoRepository: VideoRepository,
     private val playbackController: PlaybackController,
     private val themeRepository: ThemeRepository,
+    private val fileRenamer: FileRenamer,
     resumeRepository: ResumeRepository,
     settingsRepository: PlayerSettingsRepository
 ) : ViewModel() {
@@ -96,6 +100,15 @@ class HomeViewModel @Inject constructor(
 
     /** Starts [videos] at [index]; the screen then opens the player. */
     fun play(videos: List<Video>, index: Int) = playbackController.play(videos, index)
+
+    /** Renames the file on the phone (the ⋮ menu's "Rename"). */
+    suspend fun rename(video: Video, newFileName: String): RenameResult =
+        fileRenamer.rename(video.contentUri(), newFileName)
+
+    /** After a rename: re-read the list so the new name (and path) shows everywhere. */
+    fun onRenamed() {
+        viewModelScope.launch { loadVideos(userTriggered = false) }
+    }
 
     private suspend fun loadVideos(userTriggered: Boolean) {
         if (_state.value.isRefreshing) return

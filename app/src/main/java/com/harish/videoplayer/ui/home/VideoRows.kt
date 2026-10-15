@@ -59,7 +59,8 @@ internal fun VideoRow(
     resume: ResumeEntry?,
     onClick: () -> Unit,
     onInfo: () -> Unit,
-    onRemove: (() -> Unit)? = null // shown as "Remove from recently played"
+    onRename: (() -> Unit)? = null, // shown as "Rename"
+    onRemove: (() -> Unit)? = null  // shown as "Remove from recently played"
 ) {
     Row(
         modifier = Modifier
@@ -92,7 +93,7 @@ internal fun VideoRow(
                 )
             }
         }
-        VideoMenu(onInfo = onInfo, onRemove = onRemove)
+        VideoMenu(onInfo = onInfo, onRename = onRename, onRemove = onRemove)
     }
 }
 
@@ -136,13 +137,23 @@ internal fun ThumbnailWithBadges(video: Video, resume: ResumeEntry?, width: Dp) 
 }
 
 @Composable
-private fun VideoMenu(onInfo: () -> Unit, onRemove: (() -> Unit)?) {
+private fun VideoMenu(onInfo: () -> Unit, onRename: (() -> Unit)?, onRemove: (() -> Unit)?) {
     var expanded by remember { mutableStateOf(false) }
     Box {
         IconButton(onClick = { expanded = true }) {
             Icon(painterResource(R.drawable.baseline_more_vert_24), contentDescription = "More options")
         }
         DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            if (onRename != null) {
+                DropdownMenuItem(
+                    text = { Text("Rename") },
+                    leadingIcon = { Icon(painterResource(R.drawable.baseline_edit_24), contentDescription = null) },
+                    onClick = {
+                        expanded = false
+                        onRename()
+                    }
+                )
+            }
             DropdownMenuItem(
                 text = { Text("Info") },
                 leadingIcon = { Icon(painterResource(R.drawable.baseline_info_24), contentDescription = null) },

@@ -28,6 +28,7 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
   finished videos drop off automatically. Strip on the first screen + full list in the menu
   (remove one or clear all)
 - **Video info** – resolution, size, type, date and location
+- **Rename** – ⋮ → *Rename* changes the real file name on the phone (extension kept; Android asks once for files made by other apps). Resume spots carry over
 - **Fast start-up** – the video list is cached and shown instantly, then refreshed in the background
 - Pull new downloads in any time with the **refresh** button
 
