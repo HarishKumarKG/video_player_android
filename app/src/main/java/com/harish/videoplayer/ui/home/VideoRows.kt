@@ -178,7 +178,7 @@ private fun VideoMenu(onInfo: () -> Unit, onRename: (() -> Unit)?, onRemove: (()
 
 /** A folder (or a storage) in the browser: icon tile, name, and how many videos are inside. */
 @Composable
-internal fun FolderRow(dir: BrowseDir, onClick: () -> Unit) {
+internal fun FolderRow(dir: BrowseDir, onClick: () -> Unit, onRename: (() -> Unit)? = null) {
     val icon = when {
         !dir.isStorageRoot -> R.drawable.baseline_folder_24
         dir.label.startsWith("SD card") -> R.drawable.baseline_sd_card_24
@@ -209,11 +209,36 @@ internal fun FolderRow(dir: BrowseDir, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        Icon(
-            painterResource(R.drawable.baseline_chevron_right_24),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        if (onRename != null) {
+            FolderMenu(onRename)
+        } else {
+            Icon(
+                painterResource(R.drawable.baseline_chevron_right_24),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+/** ⋮ on a folder row: "Rename folder". */
+@Composable
+private fun FolderMenu(onRename: () -> Unit) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { expanded = true }) {
+            Icon(painterResource(R.drawable.baseline_more_vert_24), contentDescription = "Folder options")
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            DropdownMenuItem(
+                text = { Text("Rename folder") },
+                leadingIcon = { Icon(painterResource(R.drawable.baseline_edit_24), contentDescription = null) },
+                onClick = {
+                    expanded = false
+                    onRename()
+                }
+            )
+        }
     }
 }
 

@@ -3,6 +3,7 @@ package com.harish.videoplayer.ui.home
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.harish.videoplayer.data.files.FileRenamer
+import com.harish.videoplayer.data.files.FolderRenamer
 import com.harish.videoplayer.data.files.RenameResult
 import com.harish.videoplayer.data.resume.ResumeRepository
 import com.harish.videoplayer.data.settings.PlayerSettingsRepository
@@ -47,6 +48,7 @@ class HomeViewModel @Inject constructor(
     private val playbackController: PlaybackController,
     private val themeRepository: ThemeRepository,
     private val fileRenamer: FileRenamer,
+    private val folderRenamer: FolderRenamer,
     resumeRepository: ResumeRepository,
     settingsRepository: PlayerSettingsRepository
 ) : ViewModel() {
@@ -104,6 +106,10 @@ class HomeViewModel @Inject constructor(
     /** Renames the file on the phone (the ⋮ menu's "Rename"). */
     suspend fun rename(video: Video, newFileName: String): RenameResult =
         fileRenamer.rename(video.contentUri(), newFileName)
+
+    /** Renames a folder on the phone (the folder row's ⋮ menu). Videos inside keep their resume spots. */
+    suspend fun renameFolder(folderPath: String, newName: String): RenameResult =
+        folderRenamer.rename(folderPath, newName)
 
     /** After a rename: re-read the list so the new name (and path) shows everywhere. */
     fun onRenamed() {

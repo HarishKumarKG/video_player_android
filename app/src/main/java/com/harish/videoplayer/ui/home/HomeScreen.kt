@@ -61,6 +61,7 @@ import com.harish.videoplayer.domain.library.sortedFor
 import com.harish.videoplayer.domain.library.storageRoots
 import com.harish.videoplayer.domain.model.Video
 import com.harish.videoplayer.domain.model.otherNamesInFolderOf
+import com.harish.videoplayer.domain.rename.namesInside
 import com.harish.videoplayer.domain.model.VideoSortOrder
 import com.harish.videoplayer.domain.model.sortedByOrder
 import com.harish.videoplayer.domain.model.videoCount
@@ -106,6 +107,7 @@ fun HomeRoute(
 
     var infoFor by remember { mutableStateOf<Video?>(null) }
     var renameFor by remember { mutableStateOf<Video?>(null) }
+    var renameFolder by remember { mutableStateOf<BrowseDir?>(null) }
     var searchQuery by rememberSaveable { mutableStateOf<String?>(null) } // null = not searching
     var currentDir by rememberSaveable { mutableStateOf<String?>(null) }  // null = top level
 
@@ -197,6 +199,7 @@ fun HomeRoute(
                                 onPlay = play,
                                 onInfo = { infoFor = it },
                                 onRename = { renameFor = it },
+                                onRenameFolder = { renameFolder = it },
                                 contentPadding = bottomPadding
                             )
                         }
@@ -221,6 +224,22 @@ fun HomeRoute(
             onDismiss = { renameFor = null }
         )
     }
+
+    renameFolder?.let { folder ->
+        val parent = folder.path.substringBeforeLast('/')
+        RenameFileDialog(
+            fileName = folder.path.substringAfterLast('/'),
+            isFolder = true,
+            otherNamesInFolder = remember(folder, state.videos) { namesInside(parent, state.videos.map { it.path }) },
+            rename = { newName -> viewModel.renameFolder(folder.path, newName) },
+            onRenamed = { newName ->
+                renameFolder = null
+                viewModel.onRenamed()
+                Toast.makeText(context, "Folder renamed to $newName", Toast.LENGTH_SHORT).show()
+            },
+            onDismiss = { renameFolder = null }
+        )
+    }
 }
 
 /**
@@ -240,6 +259,7 @@ private fun FolderListing(
     onPlay: (List<Video>, Int) -> Unit,
     onInfo: (Video) -> Unit,
     onRename: (Video) -> Unit,
+    onRenameFolder: (BrowseDir) -> Unit,
     contentPadding: PaddingValues
 ) {
     val listing = remember(videos, dir, sortOrder) {
@@ -272,7 +292,12 @@ private fun FolderListing(
                 SectionLabel(if (dir == null) "Storage" else if (dirs.size == 1) "1 folder" else "${dirs.size} folders")
             }
             items(dirs, key = { "dir:" + it.path }, contentType = { "dir" }) { browseDir ->
-                FolderRow(dir = browseDir, onClick = { onOpenDir(browseDir) })
+                FolderRow(
+                    dir = browseDir,
+                    onClick = { onOpenDir(browseDir) },
+                    // storages (Internal storage, SD card) can't be renamed
+                    onRename = if (browseDir.isStorageRoot) null else ({ onRenameFolder(browseDir) })
+                )
             }
         }
         if (dirs.isEmpty() && here.isEmpty()) {

@@ -29,6 +29,7 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
   (remove one or clear all)
 - **Video info** – resolution, size, type, date and location
 - **Rename** – ⋮ → *Rename* changes the real file name on the phone (extension kept; Android asks once for files made by other apps). Resume spots carry over
+- **Rename folders** – ⋮ on any folder → *Rename folder*. Needs *All files access*, switched on once (the app opens that setting for you)
 - **Fast start-up** – the video list is cached and shown instantly, then refreshed in the background
 - Pull new downloads in any time with the **refresh** button
 
@@ -186,6 +187,7 @@ Release signing uses four repository secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSW
 | `POST_NOTIFICATIONS` | Show the playback notification (Android 13+) |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Keep playing in the background |
 | `WAKE_LOCK` | Keep background audio playing with the screen off |
+| `MANAGE_EXTERNAL_STORAGE` ("All files access") | Rename folders. Asked only when you first rename a folder |
 
 No internet permission – the app works fully offline and nothing leaves the device.
 
