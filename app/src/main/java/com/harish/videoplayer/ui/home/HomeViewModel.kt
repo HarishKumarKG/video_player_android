@@ -10,7 +10,13 @@ import com.harish.videoplayer.data.settings.PlayerSettingsRepository
 import com.harish.videoplayer.data.settings.ThemeRepository
 import com.harish.videoplayer.domain.model.PlayerSettings
 import com.harish.videoplayer.data.video.VideoRepository
+import com.harish.videoplayer.domain.library.BrowseDir
 import com.harish.videoplayer.domain.library.VideoSearchIndex
+import com.harish.videoplayer.domain.library.browse
+import com.harish.videoplayer.domain.library.sortedFor
+import com.harish.videoplayer.domain.library.storageRoots
+import com.harish.videoplayer.domain.model.sortedByOrder
+import com.harish.videoplayer.domain.resume.recentlyPlayed
 import com.harish.videoplayer.domain.model.ThemeMode
 import com.harish.videoplayer.domain.model.Video
 import com.harish.videoplayer.domain.model.VideoSortOrder
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
@@ -63,6 +70,39 @@ class HomeViewModel @Inject constructor(
     val resume: StateFlow<Map<Long, ResumeEntry>> = resumeRepository.entries
 
     val themeMode: StateFlow<ThemeMode> = themeRepository.themeMode
+
+    /*
+     * Work that goes over every video is done here, in the background, and kept while you're on
+     * other screens. Coming back (e.g. swiping back from the player) then shows the list at once
+     * instead of re-sorting thousands of videos on the main thread during the back animation.
+     */
+
+    /** Internal storage / SD card at the top level. */
+    val roots: StateFlow<List<BrowseDir>> = _state
+        .map { it.videos }
+        .distinctUntilChanged()
+        .map { it.storageRoots() }
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** The "Recently played" strip (latest 10 half-watched videos). */
+    val recent: StateFlow<List<Video>> = combine(_state.map { it.videos }.distinctUntilChanged(), resumeRepository.entries) { videos, entries ->
+        recentlyPlayed(videos, entries)
+    }.flowOn(Dispatchers.Default).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    // One folder's sub-folders + videos, remembered per folder until the video list changes
+    private var listingFor: List<Video>? = null
+    private val listings = HashMap<Pair<String, VideoSortOrder>, Pair<List<BrowseDir>, List<Video>>>()
+
+    fun listing(videos: List<Video>, dir: String, sortOrder: VideoSortOrder): Pair<List<BrowseDir>, List<Video>> {
+        if (listingFor !== videos) {
+            listings.clear()
+            listingFor = videos
+        }
+        return listings.getOrPut(dir to sortOrder) {
+            videos.browse(dir).let { it.dirs.sortedFor(sortOrder) to it.videos.sortedByOrder(sortOrder) }
+        }
+    }
 
     /**
      * Search data, prepared in the background as soon as videos load (and again only when the

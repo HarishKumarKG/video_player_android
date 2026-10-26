@@ -55,18 +55,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.harish.videoplayer.R
 import com.harish.videoplayer.domain.library.BrowseDir
 import com.harish.videoplayer.domain.library.breadcrumbs
-import com.harish.videoplayer.domain.library.browse
 import com.harish.videoplayer.domain.library.browseParent
-import com.harish.videoplayer.domain.library.sortedFor
-import com.harish.videoplayer.domain.library.storageRoots
 import com.harish.videoplayer.domain.model.Video
 import com.harish.videoplayer.domain.model.otherNamesInFolderOf
 import com.harish.videoplayer.domain.rename.namesInside
 import com.harish.videoplayer.domain.model.VideoSortOrder
-import com.harish.videoplayer.domain.model.sortedByOrder
 import com.harish.videoplayer.domain.model.videoCount
 import com.harish.videoplayer.domain.resume.ResumeEntry
-import com.harish.videoplayer.domain.resume.recentlyPlayed
 import com.harish.videoplayer.ui.common.RenameFileDialog
 import com.harish.videoplayer.ui.theme.BrandBackground
 import com.harish.videoplayer.ui.theme.LocalIsDarkTheme
@@ -113,7 +108,8 @@ fun HomeRoute(
 
     // With only internal storage there's no point in a one-item "choose storage" list:
     // the top level is the storage itself.
-    val roots = remember(state.videos) { state.videos.storageRoots() }
+    val roots by viewModel.roots.collectAsStateWithLifecycle()
+    val recent by viewModel.recent.collectAsStateWithLifecycle()
     val singleRoot = roots.singleOrNull()?.path
     val shownDir = currentDir ?: singleRoot
 
@@ -194,6 +190,8 @@ fun HomeRoute(
                                 sortOrder = state.sortOrder,
                                 resume = resume,
                                 showRecent = settings.showRecentlyPlayed,
+                                recent = recent,
+                                listingFor = viewModel::listing,
                                 onOpenRecent = onOpenRecent,
                                 onOpenDir = { currentDir = it.path },
                                 onPlay = play,
@@ -254,6 +252,8 @@ private fun FolderListing(
     sortOrder: VideoSortOrder,
     resume: Map<Long, ResumeEntry>,
     showRecent: Boolean,
+    recent: List<Video>,
+    listingFor: (List<Video>, String, VideoSortOrder) -> Pair<List<BrowseDir>, List<Video>>,
     onOpenRecent: () -> Unit,
     onOpenDir: (BrowseDir) -> Unit,
     onPlay: (List<Video>, Int) -> Unit,
@@ -264,13 +264,13 @@ private fun FolderListing(
 ) {
     val listing = remember(videos, dir, sortOrder) {
         if (dir == null) roots to emptyList()
-        else videos.browse(dir).let { it.dirs.sortedFor(sortOrder) to it.videos.sortedByOrder(sortOrder) }
+        else listingFor(videos, dir, sortOrder) // cached in the ViewModel
     }
     val (dirs, here) = listing
     val isTopLevel = dir == null || roots.singleOrNull()?.path == dir
     // "Recently played" strip: first screen only, half-watched videos only
-    val continueWatching = remember(videos, resume, isTopLevel, showRecent) {
-        if (!isTopLevel || !showRecent) emptyList() else recentlyPlayed(videos, resume)
+    val continueWatching = remember(recent, isTopLevel, showRecent) {
+        if (!isTopLevel || !showRecent) emptyList() else recent
     }
 
     LazyColumn(
