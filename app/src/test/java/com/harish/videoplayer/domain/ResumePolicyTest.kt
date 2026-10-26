@@ -44,6 +44,14 @@ class ResumePolicyTest {
         assertEquals(listOf(3L, 1L), recentlyPlayed(videos, entries).map { it.id })
     }
 
+    @Test fun `only the latest 10 are listed`() {
+        val videos = (1L..15L).map { video(it) }
+        val entries = videos.associate { it.id to ResumeEntry(positionMs = 60_000, durationMs = 600_000, updatedAtMs = it.id) }
+        val recent = recentlyPlayed(videos, entries)
+        assertEquals(10, recent.size)
+        assertEquals((15L downTo 6L).toList(), recent.map { it.id })
+    }
+
     @Test fun `nothing saved means nothing recently played`() =
         assertTrue(recentlyPlayed(listOf(video(1)), emptyMap()).isEmpty())
 }

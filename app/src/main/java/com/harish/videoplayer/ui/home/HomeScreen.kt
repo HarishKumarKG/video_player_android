@@ -270,7 +270,7 @@ private fun FolderListing(
     val isTopLevel = dir == null || roots.singleOrNull()?.path == dir
     // "Recently played" strip: first screen only, half-watched videos only
     val continueWatching = remember(videos, resume, isTopLevel, showRecent) {
-        if (!isTopLevel || !showRecent) emptyList() else recentlyPlayed(videos, resume).take(15)
+        if (!isTopLevel || !showRecent) emptyList() else recentlyPlayed(videos, resume)
     }
 
     LazyColumn(

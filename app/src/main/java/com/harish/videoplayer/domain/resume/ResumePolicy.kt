@@ -44,12 +44,22 @@ object ResumePolicy {
  * "Recently played": videos you stopped halfway, the one you watched most recently first.
  * Finished videos are never saved (see [ResumePolicy]), so they never appear here.
  * Saved positions for videos that no longer exist on the phone are skipped.
+ *
+ * Only the latest [limit] (10) are listed, so the list stays short and useful. Older videos
+ * still remember their spot — they just aren't shown here.
  */
-fun recentlyPlayed(videos: List<Video>, entries: Map<Long, ResumeEntry>): List<Video> {
+const val RECENTLY_PLAYED_LIMIT = 10
+
+fun recentlyPlayed(
+    videos: List<Video>,
+    entries: Map<Long, ResumeEntry>,
+    limit: Int = RECENTLY_PLAYED_LIMIT
+): List<Video> {
     if (entries.isEmpty()) return emptyList()
     val byId = videos.associateBy { it.id }
     return entries.entries
         .filter { ResumePolicy.shouldRemember(it.value.positionMs, it.value.durationMs) }
         .sortedByDescending { it.value.updatedAtMs }
         .mapNotNull { byId[it.key] }
+        .take(limit)
 }
