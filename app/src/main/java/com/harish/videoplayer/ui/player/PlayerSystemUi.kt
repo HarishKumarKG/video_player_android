@@ -150,13 +150,25 @@ fun OrientationResetEffect() {
  *               when the phone's own auto-rotate is switched off (that switch keeps the rest
  *               of the phone still; while watching you usually want the video to turn).
  *  LANDSCAPE / PORTRAIT -> locked by the rotate button, turning the phone does nothing
+ *  LOCKED    -> the lock-rotation button: stays exactly the way it is right now
+ *               (e.g. on a bus or lying in bed, bumps and tilts never turn the video)
  */
-enum class OrientationMode { AUTO, LANDSCAPE, PORTRAIT }
+enum class OrientationMode { AUTO, LANDSCAPE, PORTRAIT, LOCKED }
+
+/**
+ * Remembers the lock-rotation button while the app is open, so the next video
+ * you open stays locked too (it starts in whatever way you're holding the phone).
+ */
+object OrientationMemory {
+    var locked = false
+}
 
 fun Activity.applyOrientation(mode: OrientationMode) {
     requestedOrientation = when (mode) {
         OrientationMode.AUTO -> ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
         OrientationMode.LANDSCAPE -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
         OrientationMode.PORTRAIT -> ActivityInfo.SCREEN_ORIENTATION_SENSOR_PORTRAIT
+        // Holds the current way up, even ignoring an upside-down flip
+        OrientationMode.LOCKED -> ActivityInfo.SCREEN_ORIENTATION_LOCKED
     }
 }
