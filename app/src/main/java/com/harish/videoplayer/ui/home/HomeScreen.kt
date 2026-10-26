@@ -155,7 +155,9 @@ fun HomeRoute(
                 SearchEntry(onClick = { searchQuery = "" })
 
                 when {
-                    state.isLoading && state.videos.isEmpty() -> Centered {
+                    // Also wait while the storages are still being worked out in the background,
+                    // so the first screen never shows up (and stays) empty.
+                    (state.isLoading && state.videos.isEmpty()) || (state.videos.isNotEmpty() && roots.isEmpty()) -> Centered {
                         CircularProgressIndicator(color = MaterialTheme.colorScheme.tertiary)
                     }
                     state.videos.isEmpty() -> Centered {
@@ -262,7 +264,7 @@ private fun FolderListing(
     onRenameFolder: (BrowseDir) -> Unit,
     contentPadding: PaddingValues
 ) {
-    val listing = remember(videos, dir, sortOrder) {
+    val listing = remember(videos, dir, sortOrder, roots) {
         if (dir == null) roots to emptyList()
         else listingFor(videos, dir, sortOrder) // cached in the ViewModel
     }
