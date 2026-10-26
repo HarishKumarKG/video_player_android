@@ -37,7 +37,9 @@ fun AppNavHost(
 
     ModalNavigationDrawer(
         drawerState = drawerState,
-        gesturesEnabled = currentRoute != Destination.Player.route,
+        // Swipe only CLOSES the open menu. A closed menu opens with the ☰ button, so a swipe from
+        // the left edge is Android's "back" gesture again instead of pulling the menu out.
+        gesturesEnabled = drawerState.isOpen && currentRoute != Destination.Player.route,
         drawerContent = {
             AppDrawer(
                 currentRoute = currentRoute,
