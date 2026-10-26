@@ -121,6 +121,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
     val castState by viewModel.castState.collectAsStateWithLifecycle()
     val castDevices by viewModel.castDevices.collectAsStateWithLifecycle()
     val castSearching by viewModel.castSearching.collectAsStateWithLifecycle()
+    val castWarning by viewModel.castWarning.collectAsStateWithLifecycle()
     val casting = castState !is CastState.Idle
     var showCastSheet by rememberSaveable { mutableStateOf(false) }
 
@@ -487,6 +488,15 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                 viewModel.stopCasting()
             },
             onDismiss = { showCastSheet = false }
+        )
+    }
+
+    // The picked TV can't play this file's picture or sound: ask first
+    castWarning?.let { pending ->
+        CastWarningDialog(
+            warning = pending.warning,
+            onCastAnyway = viewModel::confirmCast,
+            onCancel = viewModel::cancelCast
         )
     }
 

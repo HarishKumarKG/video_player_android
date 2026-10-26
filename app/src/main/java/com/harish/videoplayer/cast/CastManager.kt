@@ -59,7 +59,8 @@ data class CastHandBack(val videoId: Long, val positionMs: Long)
 class CastManager @Inject constructor(
     @ApplicationContext private val context: Context,
     private val server: CastServer,
-    private val resumeRepository: ResumeRepository
+    private val resumeRepository: ResumeRepository,
+    private val formatReader: MediaFormatReader
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val ssdp = SsdpDiscovery(context)
@@ -162,7 +163,8 @@ class CastManager @Inject constructor(
                 throw e
             } catch (e: Exception) {
                 Log.w(TAG, "Cast failed", e)
-                _messages.tryEmit(e.message ?: "Couldn't cast to ${device.name}")
+                val reason = queue.getOrNull(this@CastManager.index)?.let { reasonTvCantPlay(device, it) }
+                _messages.tryEmit(reason ?: e.message ?: "Couldn't cast to ${device.name}")
                 finish(stopTv = false, handBack = false)
             }
         }
@@ -260,13 +262,23 @@ class CastManager @Inject constructor(
                     }
                 }
                 RemoteState.ERROR -> {
-                    _messages.tryEmit("${r.device.name} couldn't play this video. Its format may not be supported by this TV")
+                    val reason = reasonTvCantPlay(r.device, queue[index])
+                    _messages.tryEmit(
+                        reason?.let { "${r.device.name} couldn't play this video. $it" }
+                            ?: "${r.device.name} couldn't play this video. Its format may not be supported by this TV"
+                    )
                     finish(stopTv = false, handBack = true)
                     return
                 }
                 else -> Unit
             }
         }
+    }
+
+    /** e.g. "The sound is DTS, which Chromecast can't play." — null when we don't know why. */
+    private suspend fun reasonTvCantPlay(device: CastDevice, video: Video): String? {
+        if (device.kind != CastKind.GOOGLE_CAST) return null
+        return formatReader.read(video.contentUri())?.let(CastCompatibility::explainFailure)
     }
 
     private fun command(action: suspend (CastRenderer) -> Unit) {

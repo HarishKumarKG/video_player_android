@@ -2,11 +2,16 @@ package com.harish.videoplayer.ui.player
 
 import android.net.Uri
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
+import com.harish.videoplayer.cast.CastCompatibility
 import com.harish.videoplayer.cast.CastDevice
+import com.harish.videoplayer.cast.CastKind
+import com.harish.videoplayer.cast.CastWarning
+import com.harish.videoplayer.cast.MediaFormatReader
 import com.harish.videoplayer.cast.CastHandBack
 import com.harish.videoplayer.cast.CastManager
 import com.harish.videoplayer.cast.CastState
@@ -14,16 +19,21 @@ import com.harish.videoplayer.data.settings.PlayerSettingsRepository
 import com.harish.videoplayer.domain.model.PlayerSettings
 import com.harish.videoplayer.playback.PlaybackController
 import com.harish.videoplayer.playback.TrackOption
+import com.harish.videoplayer.playback.contentUri
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.launch
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val controller: PlaybackController,
     private val settingsRepository: PlayerSettingsRepository,
-    private val castManager: CastManager
+    private val castManager: CastManager,
+    private val formatReader: MediaFormatReader
 ) : ViewModel() {
 
     val player: ExoPlayer get() = controller.player
@@ -92,8 +102,40 @@ class PlayerViewModel @Inject constructor(
     /** The video showing on the phone right now. */
     fun currentVideoId(): Long? = controller.queue.value.getOrNull(player.currentMediaItemIndex)?.id
 
-    /** Sends the current video (and the rest of the list) to [device], from where the phone is now. */
+    /** A video that may not play on the TV, waiting for "Cast anyway" or "Cancel". */
+    data class PendingCast(val device: CastDevice, val warning: CastWarning)
+
+    private val _castWarning = MutableStateFlow<PendingCast?>(null)
+    val castWarning: StateFlow<PendingCast?> = _castWarning.asStateFlow()
+
+    /**
+     * Cast button -> TV picked. First looks inside the file (takes a moment): if the TV can't
+     * play its picture or sound, [castWarning] asks you first; otherwise casting starts at once.
+     */
     fun castTo(device: CastDevice) {
+        val video = controller.queue.value.getOrNull(player.currentMediaItemIndex) ?: return
+        viewModelScope.launch {
+            val warning = if (device.kind == CastKind.GOOGLE_CAST) {
+                formatReader.read(video.contentUri())?.let { CastCompatibility.check(device.kind, it, device.name) }
+            } else null
+            if (warning == null) startCast(device) else _castWarning.value = PendingCast(device, warning)
+        }
+    }
+
+    /** "Cast anyway" on the warning. */
+    fun confirmCast() {
+        val pending = _castWarning.value ?: return
+        _castWarning.value = null
+        startCast(pending.device)
+    }
+
+    /** "Cancel" on the warning: the phone just keeps playing. */
+    fun cancelCast() {
+        _castWarning.value = null
+    }
+
+    /** Sends the current video (and the rest of the list) to [device], from where the phone is now. */
+    private fun startCast(device: CastDevice) {
         val queue = controller.queue.value
         if (queue.isEmpty()) return
         val index = player.currentMediaItemIndex.coerceIn(queue.indices)

@@ -57,6 +57,8 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 - **Original quality** – the TV streams the untouched file from the phone, so **4K, 8K, HDR, HEVC, AV1, Dolby audio** play exactly as recorded (whatever the TV can decode). Nothing is re-encoded
 - Starts on the TV **where you were** on the phone; **Stop casting** brings it back to the phone at the TV's spot
 - **Phone as remote** – play/pause, ±10 s, seek bar, previous/next in the folder, TV volume
+- **Checks the file first** (Chromecast): if the TV can't play its picture or sound — e.g. DTS / TrueHD
+  sound, DivX video — it tells you why and lets you *Cast anyway* or *Cancel*
 - Keeps playing with the **phone locked** (notification with *Stop casting*); the position is saved to *Recently played*
 - Built-in mini web server with **range requests** (fast seeking), random private links per video
 
@@ -129,6 +131,8 @@ com.harish.videoplayer
 │   └── VideoThumbnailBitmapLoader.kt  Video frames for the notification
 ├── cast/
 │   ├── CastManager.kt           Search, cast, remote control, follows the TV every second
+│   ├── CastCompatibility.kt     Which picture/sound formats Chromecast can play (warnings)
+│   ├── MediaFormatReader.kt     Reads a file's formats with Media3 (works for MKV too)
 │   ├── CastServer.kt            Tiny HTTP server: streams the original file (with Range support)
 │   ├── CastService.kt           Foreground service: keeps casting alive with the screen off
 │   ├── dlna/                    SSDP discovery + UPnP AVTransport / RenderingControl (smart TVs)

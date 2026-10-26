@@ -22,6 +22,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledIconButton
@@ -35,6 +36,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
@@ -52,7 +54,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.harish.videoplayer.R
+import com.harish.videoplayer.cast.CastCompatibility
 import com.harish.videoplayer.cast.CastDevice
+import com.harish.videoplayer.cast.CastWarning
 import com.harish.videoplayer.cast.CastKind
 import com.harish.videoplayer.cast.CastState
 import com.harish.videoplayer.cast.RemoteState
@@ -345,4 +349,35 @@ private fun RemoteButton(icon: Int, description: String, enabled: Boolean, onCli
             modifier = Modifier.size(32.dp)
         )
     }
+}
+
+/**
+ * "This video won't play on Living Room TV" — shown before casting a file whose picture or sound
+ * the TV can't play, so you can decide instead of finding out on the TV.
+ */
+@Composable
+fun CastWarningDialog(
+    warning: CastWarning,
+    onCastAnyway: () -> Unit,
+    onCancel: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onCancel,
+        icon = { Icon(painterResource(R.drawable.baseline_cast_24), contentDescription = null) },
+        title = { Text(warning.headline) },
+        text = {
+            Column {
+                warning.reasons.forEach { reason ->
+                    Text(reason, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(bottom = 8.dp))
+                }
+                Text(
+                    CastCompatibility.SAFE_FORMATS,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        },
+        confirmButton = { TextButton(onClick = onCastAnyway) { Text("Cast anyway") } },
+        dismissButton = { TextButton(onClick = onCancel) { Text("Cancel") } }
+    )
 }
