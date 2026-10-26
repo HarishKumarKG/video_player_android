@@ -1,6 +1,6 @@
 # Harish — Video Player for Android
 
-A modern, offline video player for Android built with **Kotlin**, **Jetpack Compose** and **Media3 ExoPlayer**.
+A modern, offline video player (with casting to your TV) for Android built with **Kotlin**, **Jetpack Compose** and **Media3 ExoPlayer**.
 It plays the videos already on your phone, with a folder browser, resume-where-you-left-off,
 recently played, gestures, subtitles, picture-in-picture, background audio and polished light & dark themes.
 
@@ -24,7 +24,7 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 - **Sort** – *date modified*, *name (A–Z / Z–A)*, *longest* or *largest*
 - **Search** – live results as you type, across file and folder names
   (case- and accent-insensitive, words in any order)
-- **Recently played** – every half-watched video, newest first, with time left;
+- **Recently played** – your last 10 half-watched videos, newest first, with time left;
   finished videos drop off automatically. Strip on the first screen + full list in the menu
   (remove one or clear all)
 - **Video info** – resolution, size, type, date and location
@@ -45,11 +45,20 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 - **Lock** – pocket-proof screen lock
 - **Aspect ratio** – Fit · Stretch · Zoom
 - **Rotation** – follows how you hold the phone; the rotate button locks landscape or portrait (tap again for auto-rotate)
+- **Lock rotation** – one tap keeps the video the way you're holding it (great on a bus or in bed); tap again to follow the phone
 - **Subtitles** – embedded tracks (e.g. MKV) or load your own `.srt` / `.vtt` / `.ass` file
 - **Audio tracks** – switch language for multi-audio videos; each track shows its format and channels (e.g. *Tamil · Dolby Digital · 5.1*)
 - **Remembers your audio choice** – each video reopens with the track you picked, and new videos start in your last-picked language (reset in Settings)
 - **Clear voices for 5.1 / 7.1** – surround movies are mixed down to stereo with the dialogue channel at full strength, so voices don't go quiet on phone speakers or earphones (switch in Settings)
 - **Plays almost any audio** – FFmpeg decoders handle Dolby Digital (AC-3 / E-AC-3), DTS, TrueHD, FLAC, Opus and more, even where the phone has no decoder of its own
+
+### Cast to TV
+- **Cast button** in the player finds every TV on your Wi-Fi: **Chromecast / Google TV / Android TV** and **DLNA smart TVs** (Samsung, LG, Sony, Panasonic…)
+- **Original quality** – the TV streams the untouched file from the phone, so **4K, 8K, HDR, HEVC, AV1, Dolby audio** play exactly as recorded (whatever the TV can decode). Nothing is re-encoded
+- Starts on the TV **where you were** on the phone; **Stop casting** brings it back to the phone at the TV's spot
+- **Phone as remote** – play/pause, ±10 s, seek bar, previous/next in the folder, TV volume
+- Keeps playing with the **phone locked** (notification with *Stop casting*); the position is saved to *Recently played*
+- Built-in mini web server with **range requests** (fast seeking), random private links per video
 
 ### Picture-in-picture, background & notification
 - **Picture-in-picture** – press Home and the video keeps playing in a floating window with ⏪ ⏯ ⏩
@@ -118,6 +127,12 @@ com.harish.videoplayer
 │   ├── PlaybackController.kt    Single entry point: queue, resume, tracks, subtitles, background mode
 │   ├── PlaybackService.kt       MediaSessionService: notification, lock screen, Bluetooth
 │   └── VideoThumbnailBitmapLoader.kt  Video frames for the notification
+├── cast/
+│   ├── CastManager.kt           Search, cast, remote control, follows the TV every second
+│   ├── CastServer.kt            Tiny HTTP server: streams the original file (with Range support)
+│   ├── CastService.kt           Foreground service: keeps casting alive with the screen off
+│   ├── dlna/                    SSDP discovery + UPnP AVTransport / RenderingControl (smart TVs)
+│   └── googlecast/              Chromecast / Google TV via Google's Default Media Receiver
 └── ui/
     ├── home/                    Folder browser, header, search, rows, ViewModel
     ├── recent/                  Recently played list
@@ -186,10 +201,13 @@ Release signing uses four repository secrets: `KEYSTORE_BASE64`, `KEYSTORE_PASSW
 | `READ_MEDIA_VIDEO` (Android 13+) / `READ_EXTERNAL_STORAGE` (Android 11–12) | Read the videos on the device |
 | `POST_NOTIFICATIONS` | Show the playback notification (Android 13+) |
 | `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_MEDIA_PLAYBACK` | Keep playing in the background |
-| `WAKE_LOCK` | Keep background audio playing with the screen off |
+| `WAKE_LOCK` | Keep background audio / casting going with the screen off |
+| `INTERNET`, `ACCESS_NETWORK_STATE`, `ACCESS_WIFI_STATE` | Casting: the TV downloads the video from the phone over your Wi-Fi |
+| `CHANGE_WIFI_MULTICAST_STATE` | Casting: find DLNA TVs (SSDP) |
+| `ACCESS_LOCAL_NETWORK` (Android 17+) | Casting: talk to devices on your network (asked the first time you tap Cast) |
 | `MANAGE_EXTERNAL_STORAGE` ("All files access") | Rename folders. Asked only when you first rename a folder |
 
-No internet permission – the app works fully offline and nothing leaves the device.
+The app works fully offline. The network is only used for casting, and only inside your own Wi-Fi — nothing is sent to the internet.
 
 ---
 

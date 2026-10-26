@@ -56,11 +56,15 @@ class PlayerControlActions(
     val onLock: () -> Unit,
     val onAspect: () -> Unit,
     val onRotate: () -> Unit,
+    /** The lock-rotation button: keep the screen the way it is now / follow the phone again. */
+    val onOrientationLock: () -> Unit,
     val onSubtitles: () -> Unit,
     val onAudio: () -> Unit,
     val onSpeed: () -> Unit,
     val onPictureInPicture: (() -> Unit)?, // null = not supported on this phone
     val onSettings: () -> Unit,
+    /** The Cast button: pick a TV. */
+    val onCast: () -> Unit,
     /** Any touch on the controls: restarts the auto-hide timer. */
     val onInteraction: () -> Unit
 )
@@ -79,6 +83,7 @@ fun PlayerControls(
     ui: PlayerUiState,
     aspect: AspectMode,
     showAudioButton: Boolean,
+    orientationLocked: Boolean,
     actions: PlayerControlActions
 ) {
     Box(
@@ -96,7 +101,7 @@ fun PlayerControls(
     ) {
         TopBar(ui, showAudioButton, actions, Modifier.align(Alignment.TopCenter))
         CenterButtons(ui, actions, Modifier.align(Alignment.Center))
-        BottomBar(ui, aspect, actions, Modifier.align(Alignment.BottomCenter))
+        BottomBar(ui, aspect, orientationLocked, actions, Modifier.align(Alignment.BottomCenter))
     }
 }
 
@@ -120,6 +125,7 @@ private fun TopBar(ui: PlayerUiState, showAudioButton: Boolean, actions: PlayerC
                 .weight(1f)
                 .padding(horizontal = 4.dp)
         )
+        PlayerIcon(R.drawable.baseline_cast_24, "Cast to TV", actions.onCast)
         PlayerIcon(R.drawable.baseline_subtitles_24, "Subtitles", actions.onSubtitles)
         if (showAudioButton) PlayerIcon(R.drawable.baseline_audiotrack_24, "Audio track", actions.onAudio)
         TextButton(onClick = { actions.onInteraction(); actions.onSpeed() }) {
@@ -171,7 +177,13 @@ private fun CenterButtons(ui: PlayerUiState, actions: PlayerControlActions, modi
 }
 
 @Composable
-private fun BottomBar(ui: PlayerUiState, aspect: AspectMode, actions: PlayerControlActions, modifier: Modifier) {
+private fun BottomBar(
+    ui: PlayerUiState,
+    aspect: AspectMode,
+    orientationLocked: Boolean,
+    actions: PlayerControlActions,
+    modifier: Modifier
+) {
     // While dragging, the slider shows the finger's spot; the seek happens when you let go
     var dragFraction by remember { mutableStateOf<Float?>(null) }
     val duration = ui.durationMs.coerceAtLeast(1)
@@ -215,6 +227,13 @@ private fun BottomBar(ui: PlayerUiState, aspect: AspectMode, actions: PlayerCont
                 Text(aspect.label, color = White)
             }
             Spacer(Modifier.weight(1f))
+            // Lock rotation: highlighted while locked, so you can see it at a glance
+            PlayerIcon(
+                R.drawable.baseline_screen_lock_rotation_24,
+                if (orientationLocked) "Unlock rotation" else "Lock rotation",
+                actions.onOrientationLock,
+                tint = if (orientationLocked) MaterialTheme.colorScheme.tertiary else White
+            )
             PlayerIcon(R.drawable.baseline_screen_rotation_24, "Rotate screen", actions.onRotate)
         }
     }
@@ -231,13 +250,14 @@ private fun PlayerIcon(
     description: String,
     onClick: () -> Unit,
     size: androidx.compose.ui.unit.Dp = 24.dp,
-    enabled: Boolean = true
+    enabled: Boolean = true,
+    tint: Color = White
 ) {
     IconButton(onClick = onClick, enabled = enabled, modifier = Modifier.size(size + 24.dp)) {
         Icon(
             painterResource(icon),
             contentDescription = description,
-            tint = if (enabled) White else White.copy(alpha = 0.35f),
+            tint = if (enabled) tint else tint.copy(alpha = 0.35f),
             modifier = Modifier.size(size)
         )
     }

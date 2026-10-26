@@ -85,6 +85,10 @@ dependencies {
     // phones whose built-in decoders can't play a track
     implementation(libs.media3.ffmpeg.decoder)
 
+    // Casting: Google Cast for Chromecast / Google TV (DLNA smart TVs use plain HTTP, no library)
+    implementation(libs.play.services.cast.framework)
+    implementation(libs.androidx.mediarouter)
+
     // Hilt
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)

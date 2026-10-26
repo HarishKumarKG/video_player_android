@@ -6,18 +6,24 @@ import androidx.media3.common.C
 import androidx.media3.common.Player
 import androidx.media3.common.Tracks
 import androidx.media3.exoplayer.ExoPlayer
+import com.harish.videoplayer.cast.CastDevice
+import com.harish.videoplayer.cast.CastHandBack
+import com.harish.videoplayer.cast.CastManager
+import com.harish.videoplayer.cast.CastState
 import com.harish.videoplayer.data.settings.PlayerSettingsRepository
 import com.harish.videoplayer.domain.model.PlayerSettings
 import com.harish.videoplayer.playback.PlaybackController
 import com.harish.videoplayer.playback.TrackOption
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val controller: PlaybackController,
-    private val settingsRepository: PlayerSettingsRepository
+    private val settingsRepository: PlayerSettingsRepository,
+    private val castManager: CastManager
 ) : ViewModel() {
 
     val player: ExoPlayer get() = controller.player
@@ -70,6 +76,45 @@ class PlayerViewModel @Inject constructor(
 
     fun onAppVisible() = controller.setVideoEnabled(true)
 
-    /** Leaving the player screen. */
+    /** Leaving the player screen (a video playing on the TV keeps playing). */
     fun close() = controller.stop()
+
+    // ---------- Casting to a TV ----------
+    val castState: StateFlow<CastState> = castManager.state
+    val castDevices: StateFlow<List<CastDevice>> = castManager.devices
+    val castSearching: StateFlow<Boolean> = castManager.searching
+    val castMessages: SharedFlow<String> = castManager.messages
+    val castHandBack: SharedFlow<CastHandBack> = castManager.handBack
+
+    fun startCastSearch() = castManager.startSearch()
+    fun stopCastSearch() = castManager.stopSearch()
+
+    /** The video showing on the phone right now. */
+    fun currentVideoId(): Long? = controller.queue.value.getOrNull(player.currentMediaItemIndex)?.id
+
+    /** Sends the current video (and the rest of the list) to [device], from where the phone is now. */
+    fun castTo(device: CastDevice) {
+        val queue = controller.queue.value
+        if (queue.isEmpty()) return
+        val index = player.currentMediaItemIndex.coerceIn(queue.indices)
+        val position = player.currentPosition
+        player.pause() // the phone goes quiet; the TV takes over
+        castManager.cast(device, queue, index, position)
+    }
+
+    fun castPlayPause() = castManager.togglePlayPause()
+    fun castSkip(deltaMs: Long) = castManager.skipBy(deltaMs)
+    fun castSeek(positionMs: Long) = castManager.seekTo(positionMs)
+    fun castNext() = castManager.next()
+    fun castPrevious() = castManager.previous()
+    fun castVolume(volume: Int) = castManager.setVolume(volume)
+    fun stopCasting() = castManager.stopCasting()
+
+    /** Casting stopped: carry on on the phone from where the TV was (paused, ready to play). */
+    fun continueOnPhone(handBack: CastHandBack) {
+        val index = controller.queue.value.indexOfFirst { it.id == handBack.videoId }
+        if (index < 0) return
+        player.seekTo(index, handBack.positionMs)
+        player.pause()
+    }
 }

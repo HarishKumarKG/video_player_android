@@ -56,6 +56,10 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.C
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import com.harish.videoplayer.cast.CastState
 import com.harish.videoplayer.domain.model.AspectMode
 import com.harish.videoplayer.domain.model.formatDuration
 import com.harish.videoplayer.domain.subtitle.SubtitleFormat
@@ -113,9 +117,56 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
         if (locked) { controlsVisible = true; poke() } else onClose()
     }
 
+    // ---------- Casting to a TV ----------
+    val castState by viewModel.castState.collectAsStateWithLifecycle()
+    val castDevices by viewModel.castDevices.collectAsStateWithLifecycle()
+    val castSearching by viewModel.castSearching.collectAsStateWithLifecycle()
+    val casting = castState !is CastState.Idle
+    var showCastSheet by rememberSaveable { mutableStateOf(false) }
+
+    // Android 17+: finding TVs on the Wi-Fi needs the "local network" permission
+    val askLocalNetwork = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) showCastSheet = true
+        else Toast.makeText(context, "Allow access to devices on your network to find TVs", Toast.LENGTH_LONG).show()
+    }
+    val openCastSheet = {
+        if (Build.VERSION.SDK_INT >= 37 &&
+            context.checkSelfPermission(Manifest.permission.ACCESS_LOCAL_NETWORK) != PackageManager.PERMISSION_GRANTED
+        ) {
+            askLocalNetwork.launch(Manifest.permission.ACCESS_LOCAL_NETWORK)
+        } else {
+            showCastSheet = true
+        }
+    }
+    // While the TV plays, the phone stays quiet
+    LaunchedEffect(casting) { if (casting) player.pause() }
+    LaunchedEffect(viewModel) {
+        viewModel.castMessages.collect { Toast.makeText(context, it, Toast.LENGTH_LONG).show() }
+    }
+    LaunchedEffect(viewModel) {
+        viewModel.castHandBack.collect {
+            viewModel.continueOnPhone(it)
+            controlsVisible = true
+        }
+    }
+    // Opened another video while already casting: send that one to the TV too
+    LaunchedEffect(Unit) {
+        val device = when (val s = castState) {
+            is CastState.Casting -> s.device.takeIf { s.video.id != viewModel.currentVideoId() }
+            is CastState.Connecting -> s.device.takeIf { s.video.id != viewModel.currentVideoId() }
+            CastState.Idle -> null
+        }
+        if (device != null) viewModel.castTo(device)
+    }
+
     // Orientation follows the phone (AUTO) until the rotate button locks it
-    var orientationMode by rememberSaveable { mutableStateOf(OrientationMode.AUTO) }
-    LaunchedEffect(orientationMode) { activity?.applyOrientation(orientationMode) }
+    var orientationMode by rememberSaveable {
+        mutableStateOf(if (OrientationMemory.locked) OrientationMode.LOCKED else OrientationMode.AUTO)
+    }
+    LaunchedEffect(orientationMode) {
+        activity?.applyOrientation(orientationMode)
+        OrientationMemory.locked = orientationMode != OrientationMode.AUTO
+    }
 
     // Video finished: bring the controls back so the replay button is right there
     LaunchedEffect(ui.hasEnded) {
@@ -132,7 +183,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
 
     // Picture-in-picture (floating window)
     val enterPip = PictureInPictureEffect(
-        autoEnter = settings.autoPictureInPicture,
+        autoEnter = settings.autoPictureInPicture && !casting, // no floating window while the TV plays
         isPlaying = ui.isPlaying,
         videoWidth = ui.videoWidth,
         videoHeight = ui.videoHeight,
@@ -282,14 +333,15 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
             Box(
                 Modifier
                     .fillMaxSize()
-                    .playerGestures(enabled = !locked, handlers = gestures)
+                    .playerGestures(enabled = !locked && !casting, handlers = gestures)
             )
 
-            AnimatedVisibility(visible = controlsVisible && !locked, enter = fadeIn(), exit = fadeOut()) {
+            AnimatedVisibility(visible = controlsVisible && !locked && !casting, enter = fadeIn(), exit = fadeOut()) {
                 PlayerControls(
                     ui = ui,
                     aspect = aspect,
                     showAudioButton = audioTracks.isNotEmpty(),
+                    orientationLocked = orientationMode != OrientationMode.AUTO,
                     actions = PlayerControlActions(
                         onBack = onClose,
                         onPlayPause = { viewModel.togglePlayPause(); poke() },
@@ -308,6 +360,8 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                             // Auto -> lock to the OTHER side; locked -> back to following the phone
                             orientationMode = when (orientationMode) {
                                 OrientationMode.AUTO -> if (isLandscape) OrientationMode.PORTRAIT else OrientationMode.LANDSCAPE
+                                // Rotation is locked: turn to the other side and stay locked there
+                                OrientationMode.LOCKED -> if (isLandscape) OrientationMode.PORTRAIT else OrientationMode.LANDSCAPE
                                 else -> OrientationMode.AUTO
                             }
                             Toast.makeText(
@@ -316,7 +370,17 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                                     OrientationMode.AUTO -> "Auto-rotate"
                                     OrientationMode.LANDSCAPE -> "Landscape (locked)"
                                     OrientationMode.PORTRAIT -> "Portrait (locked)"
+                                    OrientationMode.LOCKED -> "Rotation locked"
                                 },
+                                Toast.LENGTH_SHORT
+                            ).show()
+                            poke()
+                        },
+                        onOrientationLock = {
+                            orientationMode = if (orientationMode == OrientationMode.AUTO) OrientationMode.LOCKED else OrientationMode.AUTO
+                            Toast.makeText(
+                                context,
+                                if (orientationMode == OrientationMode.AUTO) "Auto-rotate on" else "Rotation locked",
                                 Toast.LENGTH_SHORT
                             ).show()
                             poke()
@@ -326,6 +390,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                         onSpeed = { sheet = PlayerSheet.SPEED },
                         onPictureInPicture = enterPip?.let { enter -> { enter() } },
                         onSettings = { sheet = PlayerSheet.SETTINGS },
+                        onCast = { openCastSheet() },
                         onInteraction = ::poke
                     )
                 )
@@ -385,7 +450,44 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                     modifier = Modifier.align(Alignment.Center)
                 )
             }
+
+            // Playing on a TV: the phone becomes the remote control
+            if (casting) {
+                CastingPanel(
+                    state = castState,
+                    actions = CastPanelActions(
+                        onClose = onClose,
+                        onPlayPause = viewModel::castPlayPause,
+                        onSkip = viewModel::castSkip,
+                        onSeek = viewModel::castSeek,
+                        onPrevious = viewModel::castPrevious,
+                        onNext = viewModel::castNext,
+                        onVolume = viewModel::castVolume,
+                        onPickTv = { openCastSheet() },
+                        onStopCasting = viewModel::stopCasting
+                    )
+                )
+            }
         }
+    }
+
+    if (showCastSheet) {
+        CastDevicesSheet(
+            devices = castDevices,
+            searching = castSearching,
+            castState = castState,
+            onStartSearch = viewModel::startCastSearch,
+            onStopSearch = viewModel::stopCastSearch,
+            onPick = { device ->
+                showCastSheet = false
+                viewModel.castTo(device)
+            },
+            onStopCasting = {
+                showCastSheet = false
+                viewModel.stopCasting()
+            },
+            onDismiss = { showCastSheet = false }
+        )
     }
 
     // Auto-hide pauses while the lock bubble is up
