@@ -28,6 +28,16 @@ class FormatTest {
         assertEquals("1080p", resolutionLabel(1920, 1080))
         assertEquals("1080p", resolutionLabel(1080, 1920)) // portrait phone video
         assertEquals("4K", resolutionLabel(3840, 2160))
+        assertEquals("1080p", resolutionLabel(1920, 800))   // cinema-cropped Blu-ray rip
+        assertEquals("1080p", resolutionLabel(1916, 1076))  // odd encoder size
+        assertEquals("720p", resolutionLabel(1280, 536))
+        assertEquals("2K", resolutionLabel(2560, 1440))
+        assertEquals("2K", resolutionLabel(2560, 1066))     // cropped 1440p
+        assertEquals("4K", resolutionLabel(3840, 1600))     // cropped 4K movie
+        assertEquals("4K", resolutionLabel(4096, 2160))     // cinema 4K
+        assertEquals("4K", resolutionLabel(2160, 3840))     // portrait 4K phone video
+        assertEquals("8K", resolutionLabel(7680, 4320))
+        assertEquals("480p", resolutionLabel(854, 480))
         assertEquals("360p", resolutionLabel(640, 360))
         assertNull(resolutionLabel(0, 0))
     }

@@ -6,6 +6,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.width
@@ -25,6 +27,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -39,6 +44,7 @@ import com.harish.videoplayer.data.audio.AudioChoiceRepository
 import com.harish.videoplayer.data.resume.ResumeRepository
 import com.harish.videoplayer.data.settings.PlayerSettingsRepository
 import com.harish.videoplayer.domain.model.PlayerSettings
+import com.harish.videoplayer.domain.model.SubtitleLook
 import com.harish.videoplayer.ui.brand.GradientTitle
 import com.harish.videoplayer.ui.player.SettingSwitchRow
 import com.harish.videoplayer.ui.theme.BrandBackground
@@ -61,6 +67,7 @@ class SettingsViewModel @Inject constructor(
     fun setBackgroundAudio(on: Boolean) = settingsRepository.setBackgroundAudio(on)
     fun setClearVoice(on: Boolean) = settingsRepository.setClearVoice(on)
     fun setAutoPictureInPicture(on: Boolean) = settingsRepository.setAutoPictureInPicture(on)
+    fun setSubtitleLook(look: SubtitleLook) = settingsRepository.setSubtitleLook(look)
     fun clearRecentlyPlayed() = resumeRepository.clearAll()
 }
 
@@ -164,6 +171,7 @@ fun SettingsScreen(onMenuClick: () -> Unit, viewModel: SettingsViewModel = hiltV
             }
 
             SettingsCard(title = "Player") {
+                SubtitleLookChooser(selected = settings.subtitleLook, onSelect = viewModel::setSubtitleLook)
                 SettingSwitchRow(
                     icon = R.drawable.baseline_picture_in_picture_24,
                     title = "Auto picture-in-picture",
@@ -217,6 +225,44 @@ private fun SettingsCard(title: String, content: @Composable () -> Unit) {
         tonalElevation = 2.dp
     ) {
         Column(Modifier.padding(vertical = 8.dp)) { content() }
+    }
+}
+
+/** Subtitle style: one row per look, the chosen one marked. */
+@Composable
+private fun SubtitleLookChooser(selected: SubtitleLook, onSelect: (SubtitleLook) -> Unit) {
+    Row(
+        modifier = Modifier.padding(start = 24.dp, end = 24.dp, top = 12.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            painterResource(R.drawable.baseline_subtitles_24),
+            contentDescription = null,
+            tint = MaterialTheme.colorScheme.tertiary,
+            modifier = Modifier.size(24.dp)
+        )
+        Spacer(Modifier.width(16.dp))
+        Text("Subtitle style", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+    }
+    SubtitleLook.entries.forEach { look ->
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .selectable(selected = look == selected, onClick = { onSelect(look) }, role = Role.RadioButton)
+                .padding(start = 52.dp, end = 24.dp, top = 6.dp, bottom = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            RadioButton(
+                selected = look == selected,
+                onClick = null, // the whole row is the button
+                colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.tertiary)
+            )
+            Spacer(Modifier.width(12.dp))
+            Column(Modifier.weight(1f)) {
+                Text(look.label, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+                Text(look.description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
     }
 }
 

@@ -40,13 +40,18 @@ recently played, gestures, subtitles, picture-in-picture, background audio and p
 - **Controls** – ⏪10s ⏯ ⏩10s, seek bar, playback speed (0.25x – 2x)
 - **Gestures**
   - Double-tap left / right to skip 10s (keep tapping to add more)
-  - Swipe up / down: left side = brightness, right side = volume — keep swiping past 100% for a **boost up to 200%** (like VLC)
-  - Swipe sideways to scrub through the video
+  - Swipe up / down: left side = brightness, right side = volume — keep swiping past 100% for a **boost up to 200%** (like VLC); works for stereo and 5.1 / 7.1, with a soft limiter so loud scenes don't crackle
+  - No sideways swipe: seeking is done with ⏪ / ⏩ and the seek bar, so the edge swipe is always Back
 - **Lock** – pocket-proof screen lock
 - **Aspect ratio** – Fit · Stretch · Zoom
 - **Rotation** – follows how you hold the phone; the rotate button locks landscape or portrait (tap again for auto-rotate)
 - **Lock rotation** – one tap keeps the video the way you're holding it (great on a bus or in bed); tap again to follow the phone
 - **Subtitles** – embedded tracks (e.g. MKV) or load your own `.srt` / `.vtt` / `.ass` file
+  - **Subtitle style** (Settings): **App style** (default) = off-white `#F0EFED`, no background box, soft shadow,
+    one standard size on every video and orientation · **Video's own design** · **Phone's caption settings**.
+    Words, timing and position always stay as in the video
+  - Blu-ray / DVD picture subtitles (PGS, VobSub) keep their shape on cinema-cropped movies (e.g. 1920 × 800)
+- **Quality labels** – 480p · 720p · 1080p · 2K · 4K · 8K, also right for cropped movies (1920 × 800 = 1080p)
 - **Audio tracks** – switch language for multi-audio videos; each track shows its format and channels (e.g. *Tamil · Dolby Digital · 5.1*)
 - **Remembers your audio choice** – each video reopens with the track you picked, and new videos start in your last-picked language (reset in Settings)
 - **Clear voices for 5.1 / 7.1** – surround movies are mixed down to stereo with the dialogue channel at full strength, so voices don't go quiet on phone speakers or earphones (switch in Settings)

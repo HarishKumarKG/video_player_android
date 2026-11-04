@@ -2,6 +2,7 @@ package com.harish.videoplayer.data.settings
 
 import android.content.Context
 import com.harish.videoplayer.domain.model.PlayerSettings
+import com.harish.videoplayer.domain.model.SubtitleLook
 import dagger.hilt.android.qualifiers.ApplicationContext
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -10,7 +11,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
-/** Settings switches (resume, recently played, background audio, auto PiP) saved in SharedPreferences. */
+/** Settings switches (resume, recently played, background audio, auto PiP, subtitle style) saved in SharedPreferences. */
 @Singleton
 class PlayerSettingsRepository @Inject constructor(
     @ApplicationContext context: Context
@@ -23,7 +24,10 @@ class PlayerSettingsRepository @Inject constructor(
             showRecentlyPlayed = prefs.getBoolean(KEY_SHOW_RECENT, true),
             backgroundAudio = prefs.getBoolean(KEY_BACKGROUND_AUDIO, true),
             clearVoice = prefs.getBoolean(KEY_CLEAR_VOICE, true),
-            autoPictureInPicture = prefs.getBoolean(KEY_AUTO_PIP, true)
+            autoPictureInPicture = prefs.getBoolean(KEY_AUTO_PIP, true),
+            subtitleLook = prefs.getString(KEY_SUBTITLE_LOOK, null)
+                ?.let { name -> SubtitleLook.entries.firstOrNull { it.name == name } }
+                ?: SubtitleLook.APP
         )
     )
     val settings: StateFlow<PlayerSettings> = _settings.asStateFlow()
@@ -53,11 +57,17 @@ class PlayerSettingsRepository @Inject constructor(
         _settings.update { it.copy(autoPictureInPicture = enabled) }
     }
 
+    fun setSubtitleLook(look: SubtitleLook) {
+        prefs.edit().putString(KEY_SUBTITLE_LOOK, look.name).apply()
+        _settings.update { it.copy(subtitleLook = look) }
+    }
+
     private companion object {
         const val KEY_RESUME = "resume_playback"
         const val KEY_SHOW_RECENT = "show_recently_played"
         const val KEY_CLEAR_VOICE = "clear_voice"
         const val KEY_BACKGROUND_AUDIO = "background_audio"
         const val KEY_AUTO_PIP = "auto_pip"
+        const val KEY_SUBTITLE_LOOK = "subtitle_look"
     }
 }

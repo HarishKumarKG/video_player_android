@@ -14,8 +14,17 @@ data class PlayerSettings(
     /** 5.1 / 7.1 movies: mix to stereo ourselves with the voice channel at full strength. */
     val clearVoice: Boolean = true,
     /** Pressing Home while a video plays shrinks it into a floating window. */
-    val autoPictureInPicture: Boolean = true
+    val autoPictureInPicture: Boolean = true,
+    /** How subtitles look: the app's own style (default), the video's design, or the phone's. */
+    val subtitleLook: SubtitleLook = SubtitleLook.APP
 )
+
+/** The three subtitle looks offered in Settings. */
+enum class SubtitleLook(val label: String, val description: String) {
+    APP("App style", "Off-white text, no background, standard size. The same on every video"),
+    VIDEO("Video's own design", "Colours, fonts and sizes as the subtitle was made, e.g. styled anime subtitles"),
+    PHONE("Phone's caption settings", "Follows Android Settings › Accessibility › Caption preferences")
+}
 
 /** How the picture fits the screen. */
 enum class AspectMode(val label: String) {

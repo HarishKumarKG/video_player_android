@@ -142,6 +142,7 @@ class CastManager @Inject constructor(
         val previousJob = castJob
         castJob = scope.launch {
             previousJob?.cancelAndJoin()
+            saveProgress() // the video the TV was playing until now
             val current = renderer
             if (current != null && current.device.id != device.id) {
                 saveProgress()
@@ -225,6 +226,28 @@ class CastManager @Inject constructor(
         lastStatus = RemoteStatus(RemoteState.BUFFERING, startPositionMs, video.durationMs)
         publishCasting()
         r.load(CastMedia(url, video.title, mime, video.sizeBytes, video.durationMs), startPositionMs)
+        makeSureItStartsAt(r, startPositionMs)
+    }
+
+    /**
+     * Some TVs ignore "start at 41:20" for some files and play from the beginning.
+     * So once the TV is actually playing, check where it is, and seek there if it's at the start.
+     */
+    private suspend fun makeSureItStartsAt(r: CastRenderer, startPositionMs: Long) {
+        if (startPositionMs < 5_000) return
+        repeat(30) { // up to ~15 s for a big 4K file to start
+            delay(500)
+            val status = runCatching { r.status() }.getOrNull() ?: return@repeat
+            if (status.state == RemoteState.PLAYING || status.state == RemoteState.PAUSED) {
+                if (status.positionMs < startPositionMs - 5_000) {
+                    Log.i(TAG, "TV started at ${status.positionMs} ms instead of $startPositionMs ms: seeking")
+                    runCatching { r.seekTo(startPositionMs) }
+                    lastStatus = status.copy(positionMs = startPositionMs)
+                    publishCasting()
+                }
+                return
+            }
+        }
     }
 
     /** Asks the TV once a second what it's doing, until casting stops. */
@@ -254,7 +277,8 @@ class CastManager @Inject constructor(
                     resumeRepository.clear(queue[index].id)
                     if (index < queue.lastIndex) {
                         index++
-                        loadCurrent(r, 0)
+                        // like on the phone: a half-watched next video continues where you left it
+                        loadCurrent(r, resumeRepository.positionFor(queue[index].id) ?: 0)
                     } else {
                         _messages.tryEmit("Finished playing on ${r.device.name}")
                         finish(stopTv = false, handBack = false)

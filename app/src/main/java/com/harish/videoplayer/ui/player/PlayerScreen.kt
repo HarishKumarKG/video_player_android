@@ -53,7 +53,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.media3.common.C
 import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import android.Manifest
@@ -69,8 +68,6 @@ import kotlinx.coroutines.delay
 /** How long the controls stay up after the last touch while the video plays. */
 private const val CONTROLS_TIMEOUT_MS = 3_500L
 
-/** A full-width sideways swipe moves this far through the video (shorter videos: their length). */
-private const val SWIPE_SEEK_WINDOW_MS = 120_000L
 
 @Composable
 fun PlayerRoute(onClose: () -> Unit, viewModel: PlayerViewModel = hiltViewModel()) {
@@ -241,8 +238,6 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
     var skipSide by remember { mutableStateOf(Side.LEFT) }
     var skipSeconds by remember { mutableIntStateOf(0) }
     var lastSkipAt by remember { mutableLongStateOf(0L) }
-    var scrubStartMs by remember { mutableLongStateOf(-1L) }
-    var scrubTargetMs by remember { mutableLongStateOf(0L) }
 
     val gestures = remember(viewModel, brightness, volume) {
         PlayerGestureHandlers(
@@ -269,25 +264,7 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                     GestureHud.Volume(volume.level)
                 }
             },
-            onHorizontalDrag = { delta ->
-                val duration = player.duration
-                if (duration != C.TIME_UNSET && duration > 0) { // live / unknown length: can't scrub
-                    if (scrubStartMs < 0) {
-                        scrubStartMs = player.currentPosition
-                        scrubTargetMs = scrubStartMs
-                    }
-                    val window = minOf(duration, SWIPE_SEEK_WINDOW_MS)
-                    scrubTargetMs = (scrubTargetMs + (delta * window).toLong()).coerceIn(0L, duration)
-                    hud = GestureHud.Seek(scrubTargetMs, scrubTargetMs - scrubStartMs)
-                }
-            },
-            onDragEnd = {
-                if (scrubStartMs >= 0) {
-                    viewModel.seekTo(scrubTargetMs)
-                    scrubStartMs = -1L
-                }
-                hud = null
-            }
+            onDragEnd = { hud = null }
         )
     }
     // Skip bubble fades a moment after the last double tap
@@ -315,17 +292,23 @@ private fun PlayerScreen(viewModel: PlayerViewModel, onClose: () -> Unit) {
                     setShowBuffering(PlayerView.SHOW_BUFFERING_NEVER)
                     setBackgroundColor(AndroidColor.BLACK)
                     this.player = player
+                    // Blu-ray / DVD picture subtitles keep their shape on cropped movies
+                    tag = PictureSubtitleFix(this).also(player::addListener)
                 }
             },
             update = { view ->
                 view.player = player
+                view.subtitleView?.applySubtitleLook(settings.subtitleLook, inPip = isInPip)
                 view.resizeMode = when (aspect) {
                     AspectMode.FIT -> AspectRatioFrameLayout.RESIZE_MODE_FIT
                     AspectMode.FILL -> AspectRatioFrameLayout.RESIZE_MODE_FILL
                     AspectMode.ZOOM -> AspectRatioFrameLayout.RESIZE_MODE_ZOOM
                 }
             },
-            onRelease = { it.player = null },
+            onRelease = { view ->
+                (view.tag as? PictureSubtitleFix)?.let(player::removeListener)
+                view.player = null
+            },
             modifier = Modifier.fillMaxSize()
         )
 

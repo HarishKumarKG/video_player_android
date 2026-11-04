@@ -19,6 +19,7 @@ import androidx.media3.exoplayer.trackselection.DefaultTrackSelector
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import com.google.common.util.concurrent.ListenableFuture
+import com.harish.videoplayer.cast.CastManager
 import com.harish.videoplayer.data.audio.AudioChoice
 import com.harish.videoplayer.data.audio.AudioChoiceRepository
 import com.harish.videoplayer.data.resume.ResumeRepository
@@ -69,7 +70,8 @@ class PlaybackController @Inject constructor(
     private val holder: PlayerHolder,
     private val resumeRepository: ResumeRepository,
     private val settingsRepository: PlayerSettingsRepository,
-    private val audioChoiceRepository: AudioChoiceRepository
+    private val audioChoiceRepository: AudioChoiceRepository,
+    private val castManager: CastManager
 ) {
     val player: ExoPlayer get() = holder.player
 
@@ -111,17 +113,13 @@ class PlaybackController @Inject constructor(
                 val finished = reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO ||
                     reason == Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT
                 if (finished) resumeRepository.clear(previous)
-                else resumeRepository.save(previous, lastPositionMs, lastDurationMs)
+                else if (!castManager.isCasting) resumeRepository.save(previous, lastPositionMs, lastDurationMs)
             }
             currentId = newId
             lastPositionMs = 0L
             lastDurationMs = 0L
             resetAudioDecoders() // every new video gets the normal decoder order again
             newId?.let(::continueFromSavedPosition)
-        }
-
-        override fun onAudioSessionIdChanged(audioSessionId: Int) {
-            volumeBooster.onSessionChanged(audioSessionId)
         }
 
         override fun onTracksChanged(tracks: Tracks) {
@@ -200,12 +198,12 @@ class PlaybackController @Inject constructor(
 
     // ---------- Volume above 100% ----------
 
-    private val volumeBooster = VolumeBooster()
+    private val volumeBooster = VolumeBooster(holder.boost)
 
     /** 1f = 100% .. 2f = 200% (extra amplification on top of the phone's max volume). */
     val volumeBoost: Float get() = volumeBooster.boost
 
-    fun setVolumeBoost(level: Float) = volumeBooster.set(level, player.audioSessionId)
+    fun setVolumeBoost(level: Float) = volumeBooster.set(level)
 
     /**
      * Background audio: turning the video track off while the app is hidden saves a lot of
@@ -399,6 +397,9 @@ class PlaybackController @Inject constructor(
     }
 
     private fun saveCurrent() {
+        // While casting, the TV's position is the real one (CastManager saves it); the phone
+        // sits paused at the old spot and must not overwrite it
+        if (castManager.isCasting) return
         currentId?.let { resumeRepository.save(it, lastPositionMs, lastDurationMs) }
     }
 

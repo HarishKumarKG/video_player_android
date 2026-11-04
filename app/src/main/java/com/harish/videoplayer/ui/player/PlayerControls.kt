@@ -282,11 +282,10 @@ fun UnlockButton(onUnlock: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
-/** Big round "feedback" bubble in the middle: brightness / volume level, or seek target. */
+/** Big round "feedback" bubble in the middle: brightness / volume level, or the double-tap skip. */
 sealed interface GestureHud {
     data class Brightness(val level: Float) : GestureHud
     data class Volume(val level: Float) : GestureHud
-    data class Seek(val targetMs: Long, val deltaMs: Long) : GestureHud
     data class Skip(val side: Side, val seconds: Int) : GestureHud
 }
 
@@ -296,10 +295,6 @@ fun GestureHudView(hud: GestureHud, modifier: Modifier = Modifier) {
         is GestureHud.Brightness -> R.drawable.baseline_brightness_24 to "${(hud.level * 100).toInt()}%"
         is GestureHud.Volume -> R.drawable.baseline_volume_up_24 to
             ("${(hud.level * 100).toInt()}%" + if (hud.level > 1f) "  BOOST" else "")
-        is GestureHud.Seek -> {
-            val sign = if (hud.deltaMs >= 0) "+" else "−"
-            (if (hud.deltaMs >= 0) R.drawable.baseline_forward_10_24 else R.drawable.baseline_replay_10_24) to "${formatDuration(hud.targetMs)}\n$sign${formatDuration(kotlin.math.abs(hud.deltaMs))}"
-        }
         is GestureHud.Skip -> (if (hud.side == Side.LEFT) R.drawable.baseline_replay_10_24 else R.drawable.baseline_forward_10_24) to
             "${if (hud.side == Side.LEFT) "−" else "+"}${hud.seconds}s"
     }

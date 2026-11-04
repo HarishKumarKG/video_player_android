@@ -26,18 +26,26 @@ fun formatSize(bytes: Long): String {
 }
 
 /**
- * Quality label from the frame size, using the SHORT side so portrait phone videos
- * (1080 x 1920) are still "1080p". Returns null when the size is unknown.
+ * Quality label from the frame size, the way people name it: 480p, 720p, 1080p, 2K, 4K, 8K.
+ * Returns null when the size is unknown.
+ *
+ * Both sides count, because movies are often cropped to cinema shape: a 1080p Blu-ray rip
+ * is usually 1920 x 800 (the black bars cut off). Looking only at the 800 called it "720p";
+ * its 1920 width says 1080p. Portrait phone videos (1080 x 1920) work the same way.
+ * A little slack (3%) covers odd sizes like 1916 x 1076.
  */
 fun resolutionLabel(width: Int, height: Int): String? {
+    val long = maxOf(width, height)
     val short = minOf(width, height)
+    if (short <= 0) return null
+    fun atLeast(longSide: Int, shortSide: Int) = long >= longSide * 0.97 || short >= shortSide * 0.97
     return when {
-        short <= 0 -> null
-        short >= 2160 -> "4K"
-        short >= 1440 -> "1440p"
-        short >= 1080 -> "1080p"
-        short >= 720 -> "720p"
-        short >= 480 -> "480p"
+        atLeast(7680, 4320) -> "8K"
+        atLeast(3840, 2160) -> "4K"
+        atLeast(2560, 1440) -> "2K"
+        atLeast(1920, 1080) -> "1080p"
+        atLeast(1280, 720) -> "720p"
+        atLeast(854, 480) -> "480p"
         else -> "${short}p"
     }
 }

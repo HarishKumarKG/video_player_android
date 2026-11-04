@@ -1,13 +1,12 @@
 package com.harish.videoplayer.ui.player
 
-import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
-import kotlin.math.abs
 
 /** Which half of the screen a gesture is on. */
 enum class Side { LEFT, RIGHT }
@@ -18,22 +17,18 @@ class PlayerGestureHandlers(
     val onDoubleTap: (Side) -> Unit,
     /** Up/down swipe. [delta] > 0 means the finger moved UP by that fraction of the height. */
     val onVerticalDrag: (side: Side, delta: Float) -> Unit,
-    /** Left/right swipe. [delta] > 0 means the finger moved RIGHT by that fraction of the width. */
-    val onHorizontalDrag: (delta: Float) -> Unit,
     val onDragEnd: () -> Unit
 )
-
-private enum class Axis { HORIZONTAL, VERTICAL }
 
 /**
  * The gestures of a typical video app:
  *  - tap            -> show / hide the controls
  *  - double tap     -> left side: back 10s, right side: forward 10s
  *  - swipe up/down  -> left side: brightness, right side: volume
- *  - swipe sideways -> scrub through the video
  *
- * The first few pixels of a swipe decide its direction, so a slightly diagonal swipe
- * doesn't change brightness AND seek at the same time.
+ * Sideways swipes do nothing on purpose: seeking is done with the ⏪ 10s / ⏩ 10s buttons and
+ * the seek bar, so a swipe from the screen edge is always Android's Back gesture and never
+ * jumps around in the video by accident. Only clearly up/down swipes are taken.
  */
 @Composable
 fun Modifier.playerGestures(enabled: Boolean, handlers: PlayerGestureHandlers): Modifier {
@@ -52,23 +47,16 @@ fun Modifier.playerGestures(enabled: Boolean, handlers: PlayerGestureHandlers): 
             )
         }
         .pointerInput(Unit) {
-            var axis: Axis? = null
             var side = Side.LEFT
-            detectDragGestures(
+            detectVerticalDragGestures(
                 onDragStart = { start ->
-                    axis = null
                     side = if (start.x < size.width / 2f) Side.LEFT else Side.RIGHT
                 },
-                onDragEnd = { if (axis != null) current.onDragEnd() },
-                onDragCancel = { if (axis != null) current.onDragEnd() },
-                onDrag = { change, drag ->
+                onDragEnd = { current.onDragEnd() },
+                onDragCancel = { current.onDragEnd() },
+                onVerticalDrag = { change, dragY ->
                     change.consume()
-                    val direction = axis ?: (if (abs(drag.x) > abs(drag.y)) Axis.HORIZONTAL else Axis.VERTICAL)
-                        .also { axis = it }
-                    when (direction) {
-                        Axis.HORIZONTAL -> current.onHorizontalDrag(drag.x / size.width)
-                        Axis.VERTICAL -> current.onVerticalDrag(side, -drag.y / size.height)
-                    }
+                    current.onVerticalDrag(side, -dragY / size.height)
                 }
             )
         }

@@ -33,12 +33,15 @@ class PlayerHolder @Inject constructor(
     /** 5.1 / 7.1 -> stereo with clear dialogue (Settings > Clear voices). Checked per video. */
     private val voiceDownmix = VoiceDownmixAudioProcessor { settingsRepository.settings.value.clearVoice }
 
+    /** Volume above 100% (see VolumeBooster). Runs after "Clear voices", on every channel. */
+    val boost = BoostAudioProcessor()
+
     private var instance: ExoPlayer? = null
 
     val player: ExoPlayer
         get() = instance ?: create().also { instance = it }
 
-    private fun create(): ExoPlayer = ExoPlayer.Builder(context, AudioRenderersFactory(context, voiceDownmix))
+    private fun create(): ExoPlayer = ExoPlayer.Builder(context, AudioRenderersFactory(context, voiceDownmix, boost))
         .setAudioAttributes(
             AudioAttributes.Builder()
                 .setUsage(C.USAGE_MEDIA)
@@ -72,14 +75,15 @@ class PlayerHolder @Inject constructor(
  */
 private class AudioRenderersFactory(
     context: Context,
-    private val voiceDownmix: VoiceDownmixAudioProcessor
+    private val voiceDownmix: VoiceDownmixAudioProcessor,
+    private val boost: BoostAudioProcessor
 ) : DefaultRenderersFactory(context) {
 
     init {
         setEnableDecoderFallback(true)
     }
 
-    /** Same audio output as Media3's default, plus our surround -> stereo "clear voices" step. */
+    /** Same audio output as Media3's default, plus "clear voices" (surround -> stereo) and the volume boost. */
     override fun buildAudioSink(
         context: Context,
         enableFloatOutput: Boolean,
@@ -87,7 +91,7 @@ private class AudioRenderersFactory(
     ): AudioSink = DefaultAudioSink.Builder(context)
         .setEnableFloatOutput(enableFloatOutput)
         .setEnableAudioOutputPlaybackParameters(enableAudioOutputPlaybackParams)
-        .setAudioProcessors(arrayOf(voiceDownmix))
+        .setAudioProcessors(arrayOf(voiceDownmix, boost))
         .build()
 
     override fun buildAudioRenderers(
